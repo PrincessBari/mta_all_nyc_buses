@@ -260,7 +260,17 @@
 
     function createBusMarker(color, routeDisplay) {
         const el = document.createElement('div');
-        const width = routeDisplay.length >= 3 ? '20px' : '18px';
+        // Dynamic width based on route length
+        let width;
+        if (routeDisplay.length <= 2) {
+            width = '18px';
+        } else if (routeDisplay.length === 3) {
+            width = '22px';
+        } else if (routeDisplay.length === 4) {
+            width = '26px';
+        } else {
+            width = '30px';  // 5+ characters
+        }
         
         el.style.width = width;
         el.style.height = '18px';
@@ -271,7 +281,7 @@
         el.style.alignItems = 'center';
         el.style.justifyContent = 'center';
         el.style.color = 'white';
-        el.style.fontSize = '9px';
+        el.style.fontSize = routeDisplay.length >= 4 ? '7px' : '9px';
         el.style.fontWeight = '600';
         el.style.cursor = 'pointer';
         el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
