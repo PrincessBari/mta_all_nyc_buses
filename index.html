@@ -350,42 +350,19 @@
         markers = [];
     }
 
-    function glowBuses(route) {
-        markers.forEach(marker => {
-            if (marker._route === route) {
-                const el = marker.getElement();
-                if (el) {
-                    el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
-                    el.style.border = '2px solid #fbbf24';
-                    el.style.transform = 'scale(1.2)';
-                    el.style.zIndex = '1000';
-                }
-            }
-        });
-    }
-
-    function unglowBuses() {
-        markers.forEach(marker => {
-            const el = marker.getElement();
-            if (el) {
-                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
-                el.style.border = '1px solid white';
-                el.style.transform = 'scale(1)';
-                el.style.zIndex = '';
-            }
-        });
-    }
-
     function updateMap() {
+        console.log('updateMap called');
         fetch('https://6bzmgql6bejgixjbtk5m2csisi0aaunm.lambda-url.us-east-1.on.aws/')
-            .then(response => response.json())
+            .then(response => {
+                console.log('Got response:', response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log('Raw data:', data);
                 const parsedData = typeof data.body === 'string' ? JSON.parse(data.body) : data;
-                
-                if (!parsedData || !parsedData.buses) {
-                    console.error('No bus data received');
-                    return;
-                }
+                console.log('Parsed data:', parsedData);
+                console.log('Number of buses:', parsedData.buses?.length);
+                    }
                 
                 clearMarkers();
         
