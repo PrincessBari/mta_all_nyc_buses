@@ -362,7 +362,11 @@
                 const parsedData = typeof data.body === 'string' ? JSON.parse(data.body) : data;
                 console.log('Parsed data:', parsedData);
                 console.log('Number of buses:', parsedData.buses?.length);
-                    }
+
+                if (!parsedData || !parsedData.buses) {
+                    console.error('No bus data received');
+                    return;
+                }
                 
                 clearMarkers();
         
