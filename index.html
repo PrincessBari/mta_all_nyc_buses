@@ -244,59 +244,55 @@
     const map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/light-v11',
-        center: [-73.935242, 40.730610], // NYC center
+        center: [-73.935242, 40.730610],
         zoom: 11,
         pitch: 0,
         bearing: 0,
         antialias: true
     });
 
-    let markers = [];
+    // KEY CHANGE: Map keyed by vehicle_id instead of a plain array
+    // Each entry: { marker, el, route, lastSeen }
+    const busMarkers = new Map();
+
+    // How long before we consider a bus truly gone (5 minutes = 6+ missed refreshes)
+    const EXPIRY_MS = 5 * 60 * 1000;
+
+    // Prevent race conditions: ignore slow responses that arrive after a newer one
+    let currentFetchId = 0;
 
     function glowBuses(route) {
-        markers.forEach(marker => {
-            if (marker._route === route) {
-                const el = marker.getElement();
-                if (el) {
-                    el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
-                    el.style.border = '2px solid #fbbf24';
-                    el.style.transform = 'scale(1.2)';
-                    el.style.zIndex = '1000';
-                }
+        busMarkers.forEach(({ el }) => {
+            if (el._route === route) {
+                el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
+                el.style.border = '2px solid #fbbf24';
+                el.style.transform = 'scale(1.2)';
+                el.style.zIndex = '1000';
             }
         });
     }
 
     function unglowBuses() {
-        markers.forEach(marker => {
-            const el = marker.getElement();
-            if (el) {
-                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
-                el.style.border = '1px solid white';
-                el.style.transform = 'scale(1)';
-                el.style.zIndex = '';
-            }
+        busMarkers.forEach(({ el }) => {
+            el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
+            el.style.border = '1px solid white';
+            el.style.transform = 'scale(1)';
+            el.style.zIndex = '';
         });
     }
 
     map.on('load', () => {
         updateMap();
-        setInterval(updateMap, 45000); // 45 seconds
+        setInterval(updateMap, 45000);
     });
 
-    function createBusMarker(color, routeDisplay) {
+    function createBusElement(color, routeDisplay) {
         const el = document.createElement('div');
-        // Dynamic width based on route length
         let width;
-        if (routeDisplay.length <= 2) {
-            width = '18px';
-        } else if (routeDisplay.length === 3) {
-            width = '22px';
-        } else if (routeDisplay.length === 4) {
-            width = '26px';
-        } else {
-            width = '30px';  // 5+ characters
-        }
+        if (routeDisplay.length <= 2) width = '18px';
+        else if (routeDisplay.length === 3) width = '22px';
+        else if (routeDisplay.length === 4) width = '26px';
+        else width = '30px';
         
         el.style.width = width;
         el.style.height = '18px';
@@ -320,151 +316,141 @@
         const zoom = map.getZoom();
         const baseSize = zoom < 10 ? 12 : (zoom < 12 ? 16 : (zoom < 14 ? 18 : 22));
         
-        markers.forEach(marker => {
-            const el = marker.getElement();
-            if (el) {
-                const routeText = el.textContent;
-                const textLength = routeText.length;
-                
-                // Calculate width based on text length (same logic as createBusMarker)
-                let width;
-                if (textLength <= 2) {
-                    width = baseSize;
-                } else if (textLength === 3) {
-                    width = baseSize + 4;
-                } else if (textLength === 4) {
-                    width = baseSize + 8;
-                } else {
-                    width = baseSize + 12;
-                }
-                
-                el.style.width = width + 'px';
-                el.style.height = baseSize + 'px';
-                el.style.fontSize = (textLength >= 4 ? Math.floor(baseSize * 0.35) : Math.floor(baseSize * 0.5)) + 'px';
-            }
+        busMarkers.forEach(({ el }) => {
+            const textLength = el.textContent.length;
+            let width;
+            if (textLength <= 2) width = baseSize;
+            else if (textLength === 3) width = baseSize + 4;
+            else if (textLength === 4) width = baseSize + 8;
+            else width = baseSize + 12;
+            
+            el.style.width = width + 'px';
+            el.style.height = baseSize + 'px';
+            el.style.fontSize = (textLength >= 4 ? Math.floor(baseSize * 0.35) : Math.floor(baseSize * 0.5)) + 'px';
         });
     });
 
-    function clearMarkers() {
-        markers.forEach(marker => marker.remove());
-        markers = [];
-    }
-
     function updateMap() {
-        console.log('updateMap called');
+        const fetchId = ++currentFetchId;
+        console.log(`updateMap called (fetch #${fetchId})`);
+
         fetch('https://6bzmgql6bejgixjbtk5m2csisi0aaunm.lambda-url.us-east-1.on.aws/')
             .then(response => {
-                console.log('Got response:', response.status);
+                console.log(`Fetch #${fetchId} got response:`, response.status);
                 return response.json();
             })
             .then(data => {
-                console.log('Raw data:', data);
-                const parsedData = typeof data.body === 'string' ? JSON.parse(data.body) : data;
-                console.log('Parsed data:', parsedData);
-                console.log('Number of buses:', parsedData.buses?.length);
-
-                if (!parsedData || !parsedData.buses) {
-                    console.error('No bus data received - keeping existing markers');
+                // If a newer fetch has already completed, discard this stale response
+                if (fetchId !== currentFetchId) {
+                    console.log(`Discarding stale fetch #${fetchId} (current is #${currentFetchId})`);
                     return;
                 }
-                
-                clearMarkers();
-        
-                const buses = parsedData.buses || [];
+
+                const parsedData = typeof data.body === 'string' ? JSON.parse(data.body) : data;
+                console.log(`Fetch #${fetchId}: ${parsedData.buses?.length} buses`);
+
+                if (!parsedData || !parsedData.buses || parsedData.buses.length === 0) {
+                    console.warn('Empty or missing bus data — keeping existing markers on map');
+                    return;
+                }
+
+                const now = Date.now();
+                const buses = parsedData.buses;
                 const boroughCounts = parsedData.borough_counts || {};
                 const routeCounts = parsedData.route_counts || {};
-        
+
+                // --- UPDATE OR CREATE markers (never clear) ---
                 buses.forEach(bus => {
-                    if (!bus.route || !bus.latitude || !bus.longitude) {
-                        return;
-                    }
-            
+                    if (!bus.route || !bus.latitude || !bus.longitude) return;
+
+                    const vehicleId = bus.vehicle_id;
                     const color = bus.color || boroughColors[bus.borough] || '#6b7280';
                     const routeDisplay = String(bus.route).replace('-', '');
-                            
-                    const el = createBusMarker(color, routeDisplay);
-                    
-                    let popupHTML = `
-                        <div style="font-family: 'Inter', -apple-system, sans-serif; min-width: 180px;">
-                            <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
-                                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 2px;">Route • ${bus.borough}</div>
-                                <div style="font-size: 18px; font-weight: 600; color: ${color}; line-height: 1.2;">${bus.route}</div>
-                            </div>
-                            <div style="margin-bottom: 6px; line-height: 1.3;">
-                                <span style="font-size: 11px; color: #6b7280;">Bus</span>
-                                <span style="font-size: 13px; color: #1f2937; margin-left: 8px; font-weight: 500;">${bus.vehicle_id}</span>
-                            </div>
-                            <div style="margin-bottom: 6px; line-height: 1.3;">
-                                <span style="font-size: 11px; color: #6b7280;">To</span>
-                                <span style="font-size: 13px; color: #1f2937; margin-left: 8px; font-weight: 500;">${bus.destination}</span>
-                            </div>
-                    `;
 
-                    if (bus.next_stops && bus.next_stops.length > 0) {
-                        popupHTML += `
-                            <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 4px;">Next Stops</div>
-                                <ol style="margin: 0; padding-left: 18px; font-size: 11px; color: #6b7280; line-height: 1.5;">
+                    if (busMarkers.has(vehicleId)) {
+                        // Bus already on map — just move it and refresh timestamp
+                        const entry = busMarkers.get(vehicleId);
+                        entry.marker.setLngLat([bus.longitude, bus.latitude]);
+                        entry.lastSeen = now;
+                        // Update color if route somehow changed
+                        entry.el.style.backgroundColor = color;
+                    } else {
+                        // New bus — create marker and store it
+                        const el = createBusElement(color, routeDisplay);
+                        el._route = bus.route;
+
+                        let popupHTML = `
+                            <div style="font-family: 'Inter', -apple-system, sans-serif; min-width: 180px;">
+                                <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+                                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 2px;">Route • ${bus.borough}</div>
+                                    <div style="font-size: 18px; font-weight: 600; color: ${color}; line-height: 1.2;">${bus.route}</div>
+                                </div>
+                                <div style="margin-bottom: 6px; line-height: 1.3;">
+                                    <span style="font-size: 11px; color: #6b7280;">Bus</span>
+                                    <span style="font-size: 13px; color: #1f2937; margin-left: 8px; font-weight: 500;">${bus.vehicle_id}</span>
+                                </div>
+                                <div style="margin-bottom: 6px; line-height: 1.3;">
+                                    <span style="font-size: 11px; color: #6b7280;">To</span>
+                                    <span style="font-size: 13px; color: #1f2937; margin-left: 8px; font-weight: 500;">${bus.destination}</span>
+                                </div>
                         `;
-                        bus.next_stops.forEach(stop => {
-                            popupHTML += `<li style="margin: 2px 0;">${stop}</li>`;
-                        });
-                        popupHTML += '</ol></div>';
+
+                        if (bus.next_stops && bus.next_stops.length > 0) {
+                            popupHTML += `
+                                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 4px;">Next Stops</div>
+                                    <ol style="margin: 0; padding-left: 18px; font-size: 11px; color: #6b7280; line-height: 1.5;">
+                            `;
+                            bus.next_stops.forEach(stop => {
+                                popupHTML += `<li style="margin: 2px 0;">${stop}</li>`;
+                            });
+                            popupHTML += '</ol></div>';
+                        }
+                        popupHTML += '</div>';
+
+                        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupHTML);
+
+                        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                            .setLngLat([bus.longitude, bus.latitude])
+                            .setPopup(popup)
+                            .addTo(map);
+
+                        el.addEventListener('mouseenter', () => popup.addTo(map));
+                        el.addEventListener('mouseleave', () => popup.remove());
+
+                        busMarkers.set(vehicleId, { marker, el, route: bus.route, lastSeen: now });
                     }
-
-                    popupHTML += '</div>';
-            
-                    const popup = new mapboxgl.Popup({ offset: 25 })
-                        .setHTML(popupHTML);
-                    
-                    const marker = new mapboxgl.Marker({
-                        element: el,
-                        anchor: 'center'
-                    })
-                        .setLngLat([bus.longitude, bus.latitude])
-                        .setPopup(popup)
-                        .addTo(map);
-
-                    el.addEventListener('mouseenter', () => {
-                        popup.addTo(map);
-                    });
-
-                    el.addEventListener('mouseleave', () => {
-                        popup.remove();
-                    });
-                    
-                    marker._route = bus.route;  // Store route name with marker
-                    markers.push(marker);
                 });
-        
-                // Update stats
-                document.getElementById('bus-count').textContent = buses.length;
-                
-                // Count unique routes
+
+                // --- EXPIRE buses not seen in 5 minutes ---
+                busMarkers.forEach((entry, vehicleId) => {
+                    if (now - entry.lastSeen > EXPIRY_MS) {
+                        console.log(`Expiring bus ${vehicleId} (not seen for 5+ min)`);
+                        entry.marker.remove();
+                        busMarkers.delete(vehicleId);
+                    }
+                });
+
+                // --- Update stats panel ---
+                document.getElementById('bus-count').textContent = busMarkers.size;
+
                 const uniqueRoutes = new Set();
-                Object.keys(routeCounts).forEach(key => {
-                    const route = key.split(':')[1];
-                    uniqueRoutes.add(route);
-                });
+                Object.keys(routeCounts).forEach(key => uniqueRoutes.add(key.split(':')[1]));
                 document.getElementById('route-count').textContent = uniqueRoutes.size;
-                
-                // Borough breakdown
+
                 const boroughList = document.getElementById('borough-list');
                 const boroughOrder = ['Manhattan', 'Bronx', 'Queens', 'Brooklyn', 'Staten Island', 'Express'];
-                
+
                 boroughList.innerHTML = boroughOrder.map(borough => {
                     const count = boroughCounts[borough] || 0;
                     const color = boroughColors[borough];
-                    
-                    // Get routes for this borough
+
                     const boroughRoutes = {};
-                    Object.entries(routeCounts).forEach(([key, count]) => {
+                    Object.entries(routeCounts).forEach(([key, cnt]) => {
                         const [b, route] = key.split(':');
-                        if (b === borough) {
-                            boroughRoutes[route] = count;
-                        }
+                        if (b === borough) boroughRoutes[route] = cnt;
                     });
-                    
+
                     const routeHTML = Object.entries(boroughRoutes)
                         .sort((a, b) => b[1] - a[1])
                         .map(([route, rCount]) => `
@@ -473,7 +459,7 @@
                                 <span>${rCount}</span>
                             </div>
                         `).join('');
-                    
+
                     return `
                         <div>
                             <div class="borough-header">
@@ -487,10 +473,13 @@
                         </div>
                     `;
                 }).join('');
-                
+
                 document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error(`Fetch #${fetchId} failed — keeping existing markers:`, error);
+                // Intentionally do nothing to the map
+            });
     }
     </script>
 </body>
