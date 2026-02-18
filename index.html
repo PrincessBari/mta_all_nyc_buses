@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC MTA Live Bus Tracker - All Boroughs</title>
+    
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body, html {
+            width: 100%;
+            height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        #container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+        
+        #map {
+            flex: 1;
+        }
+        
+        .info-panel {
+            width: 340px;
+            background: white;
+            padding: 24px;
+            overflow-y: auto;
+            box-shadow: -2px 0 12px rgba(0,0,0,0.08);
+            z-index: 1;
+        }
+        
+        .info-panel h1 {
+            font-size: 22px;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .stats {
+            background: #f8f9fa;
+            padding: 18px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 15px;
+        }
+        
+        .stat-label {
+            color: #666;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: #2563eb;
+        }
+        
+        .borough-section {
+            margin-bottom: 24px;
+        }
+        
+        .borough-section h3 {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        
+        .borough-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .borough-header:hover {
+            background: #e9ecef;
+        }
+        
+        .borough-name {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .borough-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .borough-count {
+            font-weight: 600;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .route-list {
+            margin-left: 24px;
+            margin-bottom: 12px;
+        }
+        
+        .route-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .last-update {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .mapboxgl-popup-content {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 14px 16px;
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.06),
+                0 1px 2px rgba(0, 0, 0, 0.04);
+            border: none !important;
+            outline: none !important;
+        }
+
+        .mapboxgl-popup-tip {
+            border: none !important;
+        }
+
+        .mapboxgl-popup {
+            border: none !important;
+        }
+
+        .mapboxgl-popup-close-button {
+            font-size: 18px;
+            padding: 6px 10px;
+            color: #6b7280;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            #container {
+                flex-direction: column;
+            }
+            
+            .info-panel {
+                width: 100%;
+                max-height: 40vh;
+                order: 2;
+            }
+            
+            #map {
+                height: 60vh;
+                order: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="map"></div>
+        
+        <div class="info-panel">
+            <h1>Live MTA Bus Tracker (All NYC)</h1>
+            <div class="subtitle">Real-time, refreshes every 45 seconds</div>
+            
+            <div class="last-update" style="margin-top: 0; margin-bottom: 16px; padding-top: 0; border-top: none;">
+                Last updated: <strong id="last-update">Loading...</strong>
+            </div>
+            
+            <div style="font-size: 12px; color: #999; margin-top: 8px; margin-bottom: 20px; font-style: italic;">
+                For bus details, hover (desktop) or tap (mobile) on bus
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Active Buses</span>
+                    <span class="stat-value" id="bus-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Routes</span>
+                    <span class="stat-value" id="route-count">0</span>
+                </div>
+            </div>
+            
+            <div class="borough-section">
+                <h3>By Borough</h3>
+                <div id="borough-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYmlvcGl4aWUiLCJhIjoiY21saGcyMHlsMDhtcjNkb205bTVtcDNraSJ9.QW9C9Oatp3hcGYvWfrD84g';
+    
+    const boroughColors = {
+        'Manhattan': '#1e40af',
+        'Bronx': '#2563eb',
+        'Queens': '#3b82f6',
+        'Brooklyn': '#60a5fa',
+        'Staten Island': '#93c5fd',
+        'Unknown': '#6b7280'
+    };
+    
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/light-v11',
+        center: [-73.935242, 40.730610], // NYC center
+        zoom: 11,
+        pitch: 0,
+        bearing: 0,
+        antialias: true
+    });
+
+    let markers = [];
+
+    map.on('load', () => {
+        updateMap();
+        setInterval(updateMap, 45000); // 45 seconds
+    });
+
+    function createBusMarker(color, routeDisplay) {
+        const el = document.createElement('div');
+        const width = routeDisplay.length >= 3 ? '20px' : '18px';
+        
+        el.style.width = width;
+        el.style.height = '18px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = color;
+        el.style.border = '1px solid white';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.color = 'white';
+        el.style.fontSize = '9px';
+        el.style.fontWeight = '600';
+        el.style.cursor = 'pointer';
+        el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
+        el.style.fontFamily = "'Inter', sans-serif";
+        el.textContent = routeDisplay;
+        return el;
+    }
+
+    map.on('zoom', () => {
+        const zoom = map.getZoom();
+        const markerSize = zoom < 10 ? 12 : (zoom < 12 ? 16 : (zoom < 14 ? 18 : 22));
+        const fontSize = Math.floor(markerSize * 0.5);
+        
+        markers.forEach(marker => {
+            const el = marker.getElement();
+            if (el) {
+                el.style.width = markerSize + 'px';
+                el.style.height = markerSize + 'px';
+                el.style.fontSize = fontSize + 'px';
+            }
+        });
+    });
+
+    function clearMarkers() {
+        markers.forEach(marker => marker.remove());
+        markers = [];
+    }
+
+    function updateMap() {
+        fetch('https://6bzmgql6bejgixjbtk5m2csisi0aaunm.lambda-url.us-east-1.on.aws/')
+            .then(response => response.json())
+            .then(data => {
+                const parsedData = typeof data.body === 'string' ? JSON.parse(data.body) : data;
+                
+                if (!parsedData || !parsedData.buses) {
+                    console.error('No bus data received');
+                    return;
+                }
+                
+                clearMarkers();
+        
+                const buses = parsedData.buses || [];
+                const boroughCounts = parsedData.borough_counts || {};
+                const routeCounts = parsedData.route_counts || {};
+        
+                buses.forEach(bus => {
+                    if (!bus.route || !bus.latitude || !bus.longitude) {
+                        return;
+                    }
+            
+                    const color = bus.color || boroughColors[bus.borough] || '#6b7280';
+                    const routeDisplay = String(bus.route).replace('-SBS', '').replace(/^[A-Z]+/, '');
+                            
+                    const el = createBusMarker(color, routeDisplay);
+                    
+                    let popupHTML = `
+                        <div style="font-family: 'Inter', -apple-system, sans-serif; min-width: 180px;">
+                            <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+                                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 2px;">Route • ${bus.borough}</div>
+                                <div style="font-size: 18px; font-weight: 600; color: ${color}; line-height: 1.2;">${bus.route}</div>
+                            </div>
+                            <div style="margin-bottom: 6px; line-height: 1.3;">
+                                <span style="font-size: 11px; color: #6b7280;">Bus</span>
+                                <span style="font-size: 13px; color: #1f2937; margin-left: 8px; font-weight: 500;">${bus.vehicle_id}</span>
+                            </div>
+                            <div style="margin-bottom: 6px; line-height: 1.3;">
+                                <span style="font-size: 11px; color: #6b7280;">To</span>
+                                <span style="font-size: 13px; color: #1f2937; margin-left: 8px; font-weight: 500;">${bus.destination}</span>
+                            </div>
+                    `;
+
+                    if (bus.next_stops && bus.next_stops.length > 0) {
+                        popupHTML += `
+                            <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 4px;">Next Stops</div>
+                                <ol style="margin: 0; padding-left: 18px; font-size: 11px; color: #6b7280; line-height: 1.5;">
+                        `;
+                        bus.next_stops.forEach(stop => {
+                            popupHTML += `<li style="margin: 2px 0;">${stop}</li>`;
+                        });
+                        popupHTML += '</ol></div>';
+                    }
+
+                    popupHTML += '</div>';
+            
+                    const popup = new mapboxgl.Popup({ offset: 25 })
+                        .setHTML(popupHTML);
+                    
+                    const marker = new mapboxgl.Marker({
+                        element: el,
+                        anchor: 'center'
+                    })
+                        .setLngLat([bus.longitude, bus.latitude])
+                        .setPopup(popup)
+                        .addTo(map);
+
+                    el.addEventListener('mouseenter', () => {
+                        popup.addTo(map);
+                    });
+
+                    el.addEventListener('mouseleave', () => {
+                        popup.remove();
+                    });
+                    
+                    markers.push(marker);
+                });
+        
+                // Update stats
+                document.getElementById('bus-count').textContent = buses.length;
+                
+                // Count unique routes
+                const uniqueRoutes = new Set();
+                Object.keys(routeCounts).forEach(key => {
+                    const route = key.split(':')[1];
+                    uniqueRoutes.add(route);
+                });
+                document.getElementById('route-count').textContent = uniqueRoutes.size;
+                
+                // Borough breakdown
+                const boroughList = document.getElementById('borough-list');
+                const boroughOrder = ['Manhattan', 'Bronx', 'Queens', 'Brooklyn', 'Staten Island'];
+                
+                boroughList.innerHTML = boroughOrder.map(borough => {
+                    const count = boroughCounts[borough] || 0;
+                    const color = boroughColors[borough];
+                    
+                    // Get routes for this borough
+                    const boroughRoutes = {};
+                    Object.entries(routeCounts).forEach(([key, count]) => {
+                        const [b, route] = key.split(':');
+                        if (b === borough) {
+                            boroughRoutes[route] = count;
+                        }
+                    });
+                    
+                    const routeHTML = Object.entries(boroughRoutes)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([route, rCount]) => `
+                            <div class="route-item">
+                                <span>${route}</span>
+                                <span>${rCount}</span>
+                            </div>
+                        `).join('');
+                    
+                    return `
+                        <div>
+                            <div class="borough-header">
+                                <div class="borough-name">
+                                    <div class="borough-dot" style="background-color: ${color}"></div>
+                                    ${borough}
+                                </div>
+                                <div class="borough-count">${count} buses</div>
+                            </div>
+                            ${count > 0 ? `<div class="route-list">${routeHTML}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+                
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+            })
+            .catch(error => console.error('Error:', error));
+    }
+    </script>
+</body>
+</html>
