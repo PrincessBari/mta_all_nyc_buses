@@ -6,25 +6,47 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Borough color mapping (blue gradient)
+# Borough color mapping (blue gradient + purple for express)
 BOROUGH_COLORS = {
-    'MTA NYCT': '#1e40af',      # Manhattan - Darkest blue
-    'MTABC': '#2563eb',          # Bronx - Dark blue  
-    'MTA QVC': '#3b82f6',        # Queens - Medium blue
-    'MTA BRKLM': '#60a5fa',      # Brooklyn - Light blue
-    'MTA SI': '#93c5fd'          # Staten Island - Lightest blue
+    'Manhattan': '#1e40af',
+    'Bronx': '#2563eb',
+    'Queens': '#3b82f6',
+    'Brooklyn': '#60a5fa',
+    'Staten Island': '#93c5fd',
+    'Express': '#8b5cf6'
 }
 
-def get_borough_from_agency(agency_id):
-    """Map agency ID to borough name and color"""
+def get_borough_from_route(route):
+    if not route or len(route) == 0:
+        return {'name': 'Unknown', 'color': '#6b7280'}
+    
+    route_upper = route.upper()
+    
+    # Express routes (all go to their own category)
+    if route_upper.startswith('BXM'):
+        return {'name': 'Express', 'color': '#8b5cf6'}
+    if route_upper.startswith('QM'):
+        return {'name': 'Express', 'color': '#8b5cf6'}
+    if route_upper.startswith('BM'):
+        return {'name': 'Express', 'color': '#8b5cf6'}
+    if route_upper.startswith('SIM'):
+        return {'name': 'Express', 'color': '#8b5cf6'}
+    if route_upper.startswith('X'):
+        return {'name': 'Express', 'color': '#8b5cf6'}
+    
+    # Check Bx (Bronx local) before single B (Brooklyn)
+    if route_upper.startswith('BX'):
+        return {'name': 'Bronx', 'color': '#2563eb'}
+    
+    # Single letter local routes
+    prefix = route_upper[0]
     borough_map = {
-        'MTA NYCT': {'name': 'Manhattan', 'color': BOROUGH_COLORS['MTA NYCT']},
-        'MTABC': {'name': 'Bronx', 'color': BOROUGH_COLORS['MTABC']},
-        'MTA QVC': {'name': 'Queens', 'color': BOROUGH_COLORS['MTA QVC']},
-        'MTA BRKLM': {'name': 'Brooklyn', 'color': BOROUGH_COLORS['MTA BRKLM']},
-        'MTA SI': {'name': 'Staten Island', 'color': BOROUGH_COLORS['MTA SI']}
+        'M': {'name': 'Manhattan', 'color': '#1e40af'},
+        'B': {'name': 'Brooklyn', 'color': '#60a5fa'},
+        'Q': {'name': 'Queens', 'color': '#3b82f6'},
+        'S': {'name': 'Staten Island', 'color': '#93c5fd'}
     }
-    return borough_map.get(agency_id, {'name': 'Unknown', 'color': '#6b7280'})
+    return borough_map.get(prefix, {'name': 'Unknown', 'color': '#6b7280'})
 
 def lambda_handler(event, context):
     """AWS Lambda handler for all NYC buses"""
@@ -83,11 +105,8 @@ def lambda_handler(event, context):
                 published_line = 'Unknown'
             
             destination_name = journey.get('DestinationName', 'Unknown')
-            
-            # Get borough from vehicle agency
-            agency_parts = vehicle_ref.split('_')
-            agency_id = agency_parts[0] if len(agency_parts) > 0 else 'Unknown'
-            borough_info = get_borough_from_agency(agency_id)
+
+            borough_info = get_borough_from_route(published_line)
             
             # Track counts
             borough_name = borough_info['name']
