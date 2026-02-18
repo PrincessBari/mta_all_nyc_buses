@@ -322,7 +322,7 @@
                     }
             
                     const color = bus.color || boroughColors[bus.borough] || '#6b7280';
-                    const routeDisplay = String(bus.route).replace('-SBS', '').replace(/^[A-Z]+/, '');
+                    const routeDisplay = String(bus.route);
                             
                     const el = createBusMarker(color, routeDisplay);
                     
