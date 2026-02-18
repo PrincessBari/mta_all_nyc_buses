@@ -253,6 +253,32 @@
 
     let markers = [];
 
+    function glowBuses(route) {
+        markers.forEach(marker => {
+            if (marker._route === route) {
+                const el = marker.getElement();
+                if (el) {
+                    el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
+                    el.style.border = '2px solid #fbbf24';
+                    el.style.transform = 'scale(1.2)';
+                    el.style.zIndex = '1000';
+                }
+            }
+        });
+    }
+
+    function unglowBuses() {
+        markers.forEach(marker => {
+            const el = marker.getElement();
+            if (el) {
+                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
+                el.style.border = '1px solid white';
+                el.style.transform = 'scale(1)';
+                el.style.zIndex = '';
+            }
+        });
+    }
+
     map.on('load', () => {
         updateMap();
         setInterval(updateMap, 45000); // 45 seconds
