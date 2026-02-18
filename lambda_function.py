@@ -72,7 +72,7 @@ def lambda_handler(event, context):
         }
         
         logger.info(f"Calling {url}")
-        response = requests.get(url, params=params, timeout=55)
+        response = requests.get(url, params=params, timeout=90)
         logger.info(f"Got response with status {response.status_code}")
         response.raise_for_status()
         data = response.json()

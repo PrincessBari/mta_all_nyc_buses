@@ -130,16 +130,43 @@
         }
         
         .route-list {
-            margin-left: 24px;
-            margin-bottom: 12px;
+            margin-left: 0;
+            margin-bottom: 8px;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.25s ease-out;
+        }
+
+        .route-list.open {
+            max-height: 2000px;
+            transition: max-height 0.35s ease-in;
         }
         
         .route-item {
             display: flex;
             justify-content: space-between;
-            padding: 6px 8px;
+            padding: 5px 12px 5px 36px;
             font-size: 13px;
             color: #666;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+
+        .route-item:hover {
+            background: #f3f4f6;
+            color: #111;
+        }
+
+        .borough-chevron {
+            font-size: 11px;
+            color: #aaa;
+            transition: transform 0.25s ease;
+            margin-left: 8px;
+        }
+
+        .borough-header.open .borough-chevron {
+            transform: rotate(180deg);
         }
         
         .last-update {
@@ -258,8 +285,9 @@
     // How long before we consider a bus truly gone (5 minutes = 6+ missed refreshes)
     const EXPIRY_MS = 5 * 60 * 1000;
 
-    // Prevent race conditions: ignore slow responses that arrive after a newer one
+    // Prevent race conditions: ignore responses that arrive out of order
     let currentFetchId = 0;
+    let lastCompletedFetchId = 0;
 
     function glowBuses(route) {
         busMarkers.forEach(({ el }) => {
@@ -330,6 +358,14 @@
         });
     });
 
+    function toggleBorough(header) {
+        const isOpen = header.classList.toggle('open');
+        const routeList = header.nextElementSibling;
+        if (routeList && routeList.classList.contains('route-list')) {
+            routeList.classList.toggle('open', isOpen);
+        }
+    }
+
     function updateMap() {
         const fetchId = ++currentFetchId;
         console.log(`updateMap called (fetch #${fetchId})`);
@@ -340,11 +376,12 @@
                 return response.json();
             })
             .then(data => {
-                // If a newer fetch has already completed, discard this stale response
-                if (fetchId !== currentFetchId) {
-                    console.log(`Discarding stale fetch #${fetchId} (current is #${currentFetchId})`);
+                // If a newer fetch has already completed, discard this out-of-order response
+                if (fetchId < lastCompletedFetchId) {
+                    console.log(`Discarding out-of-order fetch #${fetchId} (already completed #${lastCompletedFetchId})`);
                     return;
                 }
+                lastCompletedFetchId = fetchId;
 
                 const parsedData = typeof data.body === 'string' ? JSON.parse(data.body) : data;
                 console.log(`Fetch #${fetchId}: ${parsedData.buses?.length} buses`);
@@ -441,9 +478,16 @@
                 const boroughList = document.getElementById('borough-list');
                 const boroughOrder = ['Manhattan', 'Bronx', 'Queens', 'Brooklyn', 'Staten Island', 'Express'];
 
+                // Preserve which boroughs are currently open across refreshes
+                const openBoroughs = new Set(
+                    [...document.querySelectorAll('.borough-header.open')]
+                        .map(el => el.dataset.borough)
+                );
+
                 boroughList.innerHTML = boroughOrder.map(borough => {
                     const count = boroughCounts[borough] || 0;
                     const color = boroughColors[borough];
+                    const isOpen = openBoroughs.has(borough);
 
                     const boroughRoutes = {};
                     Object.entries(routeCounts).forEach(([key, cnt]) => {
@@ -456,20 +500,26 @@
                         .map(([route, rCount]) => `
                             <div class="route-item" onmouseenter="glowBuses('${route}')" onmouseleave="unglowBuses()">
                                 <span>${route}</span>
-                                <span>${rCount}</span>
+                                <span style="color:#aaa">${rCount}</span>
                             </div>
                         `).join('');
 
                     return `
-                        <div>
-                            <div class="borough-header">
+                        <div style="margin-bottom: 6px;">
+                            <div class="borough-header ${count > 0 ? 'clickable' : ''} ${isOpen ? 'open' : ''}"
+                                 data-borough="${borough}"
+                                 onclick="toggleBorough(this)"
+                                 style="cursor: ${count > 0 ? 'pointer' : 'default'}">
                                 <div class="borough-name">
                                     <div class="borough-dot" style="background-color: ${color}"></div>
                                     ${borough}
                                 </div>
-                                <div class="borough-count">${count} buses</div>
+                                <div style="display:flex;align-items:center;">
+                                    <div class="borough-count">${count} buses</div>
+                                    ${count > 0 ? '<span class="borough-chevron">▼</span>' : ''}
+                                </div>
                             </div>
-                            ${count > 0 ? `<div class="route-list">${routeHTML}</div>` : ''}
+                            ${count > 0 ? `<div class="route-list ${isOpen ? 'open' : ''}">${routeHTML}</div>` : ''}
                         </div>
                     `;
                 }).join('');
