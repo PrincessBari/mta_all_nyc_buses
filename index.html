@@ -237,6 +237,7 @@
         'Queens': '#3b82f6',
         'Brooklyn': '#60a5fa',
         'Staten Island': '#93c5fd',
+        'Express': '#8b5cf6',
         'Unknown': '#6b7280'
     };
     
@@ -391,7 +392,7 @@
                 
                 // Borough breakdown
                 const boroughList = document.getElementById('borough-list');
-                const boroughOrder = ['Manhattan', 'Bronx', 'Queens', 'Brooklyn', 'Staten Island'];
+                const boroughOrder = ['Manhattan', 'Bronx', 'Queens', 'Brooklyn', 'Staten Island', 'Express'];
                 
                 boroughList.innerHTML = boroughOrder.map(borough => {
                     const count = boroughCounts[borough] || 0;
