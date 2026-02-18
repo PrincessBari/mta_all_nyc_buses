@@ -292,15 +292,29 @@
 
     map.on('zoom', () => {
         const zoom = map.getZoom();
-        const markerSize = zoom < 10 ? 12 : (zoom < 12 ? 16 : (zoom < 14 ? 18 : 22));
-        const fontSize = Math.floor(markerSize * 0.5);
+        const baseSize = zoom < 10 ? 12 : (zoom < 12 ? 16 : (zoom < 14 ? 18 : 22));
         
         markers.forEach(marker => {
             const el = marker.getElement();
             if (el) {
-                el.style.width = markerSize + 'px';
-                el.style.height = markerSize + 'px';
-                el.style.fontSize = fontSize + 'px';
+                const routeText = el.textContent;
+                const textLength = routeText.length;
+                
+                // Calculate width based on text length (same logic as createBusMarker)
+                let width;
+                if (textLength <= 2) {
+                    width = baseSize;
+                } else if (textLength === 3) {
+                    width = baseSize + 4;
+                } else if (textLength === 4) {
+                    width = baseSize + 8;
+                } else {
+                    width = baseSize + 12;
+                }
+                
+                el.style.width = width + 'px';
+                el.style.height = baseSize + 'px';
+                el.style.fontSize = (textLength >= 4 ? Math.floor(baseSize * 0.35) : Math.floor(baseSize * 0.5)) + 'px';
             }
         });
     });
