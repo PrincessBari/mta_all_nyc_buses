@@ -398,7 +398,10 @@
 
                 // --- UPDATE OR CREATE markers (never clear) ---
                 buses.forEach(bus => {
-                    if (!bus.route || !bus.latitude || !bus.longitude) return;
+                    // Skip any bus with missing or zero coordinates
+                    const lat = parseFloat(bus.latitude);
+                    const lng = parseFloat(bus.longitude);
+                    if (!bus.route || !lat || !lng || lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) return;
 
                     const vehicleId = bus.vehicle_id;
                     const color = bus.color || boroughColors[bus.borough] || '#6b7280';
@@ -407,7 +410,7 @@
                     if (busMarkers.has(vehicleId)) {
                         // Bus already on map — just move it and refresh timestamp
                         const entry = busMarkers.get(vehicleId);
-                        entry.marker.setLngLat([bus.longitude, bus.latitude]);
+                        entry.marker.setLngLat([lng, lat]);
                         entry.lastSeen = now;
                         // Update color if route somehow changed
                         entry.el.style.backgroundColor = color;
