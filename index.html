@@ -59,7 +59,7 @@
         
         .stats {
             background: #f8f9fa;
-            padding: 18px 16px;
+            padding: 9px 16px;
             border-radius: 8px;
             margin-bottom: 24px;
         }
@@ -249,7 +249,7 @@
             </div>
             
             <div class="borough-section">
-                <h3>By Borough</h3>
+                <h3>Service Area/Type</h3>
                 <div id="borough-list"></div>
             </div>
         </div>
@@ -294,8 +294,6 @@
             if (el._route === route) {
                 el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
                 el.style.border = '2px solid #fbbf24';
-                el.style.transform = 'scale(1.2)';
-                el.style.zIndex = '1000';
             }
         });
     }
@@ -304,8 +302,6 @@
         busMarkers.forEach(({ el }) => {
             el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
             el.style.border = '1px solid white';
-            el.style.transform = 'scale(1)';
-            el.style.zIndex = '';
         });
     }
 
