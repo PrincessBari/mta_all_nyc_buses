@@ -226,14 +226,14 @@
         <div id="map"></div>
         
         <div class="info-panel">
-            <h1>NYC Live MTA Bus Tracker</h1>
-            <div class="subtitle">Updates every 45 seconds (Data source: <a href="https://bustime.mta.info/wiki/Developers/Index" target="_blank" rel="noopener noreferrer" style="color: #1e40af;">MTA Bus Time API</a>)</div>
+            <h1>Live MTA Bus Tracker (All NYC)</h1>
+            <div class="subtitle">Real-time, refreshes every 45 seconds from <a href="https://bustime.mta.info/wiki/Developers/Index" target="_blank" rel="noopener noreferrer" style="color: #2563eb;">MTA Bus Time API</a></div>
             
             <div class="last-update" style="margin-top: 0; margin-bottom: 0; padding-top: 0; border-top: none;">
                 Last updated: <strong id="last-update">Loading...</strong>
             </div>
-            <div style="font-size: 12px; color: #2563eb; margin-top: 3px; margin-bottom: 12px; line-height: 1.3;">
-                Hover (desktop) or tap (mobile) on bus on map for details
+            <div style="font-size: 12px; color: #2563eb; margin-top: 12px; margin-bottom: 12px; line-height: 1.3;">
+                For bus details, hover (desktop) or tap (mobile) on bus
             </div>
             
             <div class="stats">
@@ -249,8 +249,8 @@
             
             <div class="borough-section">
                 <h3>Service Area/Type</h3>
-                <div style="font-size: 12px; color: #2563eb; margin-top: -7px; margin-bottom: 12px; line-height: 1.3;">
-                    Select bus from dropdown to find on map
+                <div style="font-size: 12px; color: #2563eb; margin-top: 4px; margin-bottom: 12px; line-height: 1.3;">
+                    Select a bus from the dropdown to highlight it on the map
                 </div>
                 <div id="borough-list"></div>
             </div>
@@ -307,7 +307,48 @@
         });
     }
 
+    function showRoute(routeId, color) {
+        if (!map.getLayer('bus-route-line')) return;
+        // Update the color and filter to show this route
+        map.setPaintProperty('bus-route-line', 'line-color', color);
+        map.setFilter('bus-route-line', ['==', 'route_id', routeId]);
+    }
+
+    function hideRoute() {
+        if (!map.getLayer('bus-route-line')) return;
+        map.setFilter('bus-route-line', ['==', 'route_id', '']);
+    }
+
+    // Load route shapes from GeoJSON
     map.on('load', () => {
+        fetch('https://raw.githubusercontent.com/PrincessBari/mta_all_nyc_buses/main/routes.geojson')
+            .then(r => r.json())
+            .then(geojson => {
+                map.addSource('bus-routes', {
+                    type: 'geojson',
+                    data: geojson
+                });
+
+                map.addLayer({
+                    id: 'bus-route-line',
+                    type: 'line',
+                    source: 'bus-routes',
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': ['get', 'color'],
+                        'line-width': 3,
+                        'line-opacity': 0.8
+                    },
+                    filter: ['==', 'route_id', '']  // hidden by default
+                });
+
+                console.log('Bus route shapes loaded');
+            })
+            .catch(err => console.error('Failed to load route shapes:', err));
+
         updateMap();
         setInterval(updateMap, 45000);
     });
@@ -453,8 +494,14 @@
                             .setPopup(popup)
                             .addTo(map);
 
-                        el.addEventListener('mouseenter', () => popup.addTo(map));
-                        el.addEventListener('mouseleave', () => popup.remove());
+                        el.addEventListener('mouseenter', () => {
+                            popup.addTo(map);
+                            showRoute(bus.route, color);
+                        });
+                        el.addEventListener('mouseleave', () => {
+                            popup.remove();
+                            hideRoute();
+                        });
 
                         busMarkers.set(vehicleId, { marker, el, route: bus.route, lastSeen: now });
                     }
@@ -497,13 +544,21 @@
                     });
 
                     const routeHTML = Object.entries(boroughRoutes)
-                        .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
-                        .map(([route, rCount]) => `
-                            <div class="route-item" onmouseenter="glowBuses('${route}')" onmouseleave="unglowBuses()">
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([route, rCount]) => {
+                            // Find color for this route from any of its markers
+                            let routeColor = '#6b7280';
+                            busMarkers.forEach(entry => {
+                                if (entry.route === route) routeColor = entry.el.style.backgroundColor;
+                            });
+                            return `
+                            <div class="route-item"
+                                onmouseenter="glowBuses('${route}'); showRoute('${route}', '${routeColor}')"
+                                onmouseleave="unglowBuses(); hideRoute()">
                                 <span>${route}</span>
                                 <span style="color:#aaa">${rCount}</span>
-                            </div>
-                        `).join('');
+                            </div>`;
+                        }).join('');
 
                     return `
                         <div style="margin-bottom: 6px;">
