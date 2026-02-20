@@ -497,7 +497,7 @@
                     });
 
                     const routeHTML = Object.entries(boroughRoutes)
-                        .sort((a, b) => b[1] - a[1])
+                        .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
                         .map(([route, rCount]) => `
                             <div class="route-item" onmouseenter="glowBuses('${route}')" onmouseleave="unglowBuses()">
                                 <span>${route}</span>
