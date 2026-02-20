@@ -1,2 +1,4 @@
 lambda_deployment.zip
 package/
+.DS_Store
+bus_routes/
