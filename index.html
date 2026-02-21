@@ -249,7 +249,7 @@
             
             <div class="borough-section">
                 <h3>Service Area/Type</h3>
-                <div style="font-size: 12px; color: #2563eb; margin-top: -7px; margin-bottom: 12px; line-height: 1.3;">
+                <div style="font-size: 12px; color: #2563eb; margin-top: -8px; margin-bottom: 12px; line-height: 1.3;">
                     Select bus from dropdown to find on map
                 </div>
                 <div id="borough-list"></div>
@@ -321,7 +321,7 @@
 
     // Load route shapes from GeoJSON
     map.on('load', () => {
-        fetch('https://raw.githubusercontent.com/PrincessBari/mta_all_nyc_buses/route_shapes/routes.geojson?v=2')
+        fetch('https://raw.githubusercontent.com/PrincessBari/mta_all_nyc_buses/multiline-routes/routes.geojson?v=3')
             .then(r => r.json())
             .then(geojson => {
                 map.addSource('bus-routes', {
