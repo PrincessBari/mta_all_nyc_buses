@@ -288,6 +288,17 @@
         antialias: true
     });
 
+    // Handle mobile tab-switching: restore map when page becomes visible again
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            // Resize forces Mapbox to re-check the canvas and restore WebGL context
+            map.resize();
+            
+            // Trigger an immediate data refresh instead of waiting for the next interval
+            updateMap();
+        }
+    });
+
     // KEY CHANGE: Map keyed by vehicle_id instead of a plain array
     // Each entry: { marker, el, route, lastSeen }
     const busMarkers = new Map();
@@ -359,7 +370,13 @@
 
         document.getElementById('last-update').classList.add('loading');    
         updateMap();
-        setInterval(updateMap, 45000);
+        function scheduleNext() {
+            setTimeout(() => {
+                updateMap();
+                scheduleNext();
+            }, 45000);
+        }
+        scheduleNext();
     });
 
     function createBusElement(color, routeDisplay) {
