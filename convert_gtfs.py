@@ -87,18 +87,18 @@ def convert():
                 route_shapes[route_id] = {}
             route_shapes[route_id][shape_id] = coords
 
-    # Build GeoJSON — for each route, pick the longest shape
+    # Build GeoJSON — use MultiLineString to capture all directions
     features = []
     for route_id, shapes in route_shapes.items():
-        longest = max(shapes.values(), key=len)
+        all_coords = list(shapes.values())
         features.append({
             "type": "Feature",
             "properties": {
                 "route_id": route_id
             },
             "geometry": {
-                "type": "LineString",
-                "coordinates": longest
+                "type": "MultiLineString",
+                "coordinates": all_coords
             }
         })
 
