@@ -252,37 +252,25 @@
             }
 
             .info-panel {
-                /* sits over the map as a bottom sheet */
+                /* Fixed-height bottom sheet — height NEVER changes, so bus data
+                   loading into the DOM cannot ever cause a jump */
                 position: absolute;
                 bottom: 0;
                 left: 0;
                 right: 0;
                 width: 100%;
+                height: 52vh;
                 max-height: none;
-                height: auto;
                 order: 2;
                 padding: 0 18px 20px 18px;
                 border-radius: 16px 16px 0 0;
                 box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
-                overflow: hidden;
-
-                /* transition for snap animation */
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                transform: translateY(0);
-
-                /* will be set by JS based on content */
-                will-change: transform;
-            }
-
-            /* Expanded: normal scroll */
-            .info-panel.panel-expanded {
                 overflow-y: auto;
-            }
+                overflow-x: hidden;
 
-            /* Minimized: clip overflow so content below visible strip is hidden */
-            .info-panel.panel-minimized {
-                overflow-y: hidden;
-                touch-action: none; /* allow JS to handle upward drag */
+                transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateY(0);
+                will-change: transform;
             }
 
             .drag-handle-area {
@@ -383,179 +371,143 @@
     // =====================================================
     (function () {
         const isMobile = () => window.innerWidth <= 768;
+        if (!isMobile()) return;
 
         const panel      = document.getElementById('info-panel');
         const handleArea = document.getElementById('drag-handle-area');
 
-        // Use translateY to position the panel rather than height:auto,
-        // so the DOM updating (buses loading) doesn't cause the panel to jump.
-        // We measure the minimized height once after fonts settle.
-        let MINIMIZED_TRANSLATE = 0; // computed below
+        // Panel has a fixed CSS height (52vh). MINIMIZED_TRANSLATE slides it
+        // down so only the always-visible strip peeks above the bottom edge.
+        // We compute it once from the DOM, then it never needs to change
+        // (because the panel height is fixed — not auto).
+        let MINIMIZED_TRANSLATE = 0;
         let expanded = true;
 
         function computeMinimizedTranslate() {
-            // Temporarily force-expand to measure full height
-            panel.style.transition = 'none';
-            panel.classList.add('panel-expanded');
-            panel.classList.remove('panel-minimized');
-
-            // The "always visible" zone = drag handle + title + subtitle + last-update + hint
-            // We measure it by summing the heights of those elements
             const alwaysVisible = panel.querySelector('.panel-always-visible');
-            const visibleH = alwaysVisible ? alwaysVisible.offsetHeight : 120;
-            const handleH  = handleArea.offsetHeight;
-            const totalPanelH = panel.offsetHeight;
-
-            // How much to translateY so only the always-visible zone shows
-            MINIMIZED_TRANSLATE = totalPanelH - handleH - visibleH;
-            panel.style.transition = '';
+            const handleH   = handleArea.offsetHeight;
+            const visibleH  = alwaysVisible ? alwaysVisible.offsetHeight : 110;
+            const panelH    = panel.offsetHeight;
+            // slide down enough that only handle + always-visible content shows
+            MINIMIZED_TRANSLATE = panelH - handleH - visibleH;
+            if (MINIMIZED_TRANSLATE < 0) MINIMIZED_TRANSLATE = 0;
         }
 
-        function setExpanded() {
+        function setExpanded(animate) {
             expanded = true;
-            panel.classList.remove('panel-minimized');
-            panel.classList.add('panel-expanded');
+            if (!animate) panel.style.transition = 'none';
             panel.style.transform = 'translateY(0)';
             panel.style.overflowY = 'auto';
+            if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
         }
 
-        function setMinimized() {
+        function setMinimized(animate) {
             expanded = false;
-            panel.classList.remove('panel-expanded');
-            panel.classList.add('panel-minimized');
+            if (!animate) panel.style.transition = 'none';
             panel.style.transform = `translateY(${MINIMIZED_TRANSLATE}px)`;
             panel.style.overflowY = 'hidden';
+            if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
         }
 
-        // Run once on load (after a tick so layout is settled)
+        // Compute after layout settles
         window.addEventListener('load', () => {
-            if (!isMobile()) return;
             setTimeout(() => {
                 computeMinimizedTranslate();
-                // Start expanded — no jump because we're not changing anything yet
-            }, 50);
+                // panel starts expanded — no transform needed
+            }, 100);
         });
 
-        // Recompute if orientation changes
         window.addEventListener('resize', () => {
-            if (!isMobile()) return;
             computeMinimizedTranslate();
-            if (!expanded) setMinimized(); // re-apply correct translate
+            expanded ? setExpanded(false) : setMinimized(false);
         });
 
-        let startY           = 0;
-        let dragging         = false;
-        let currentTranslate = 0;
-        let baseTranslate    = 0; // translate at drag start
-        let lastY            = 0;
-        let lastTime         = 0;
-        let velocity         = 0;
+        // ── Drag state ──
+        let dragging      = false;
+        let startY        = 0;
+        let baseTranslate = 0;
+        let liveTranslate = 0;
+        let lastY         = 0;
+        let lastT         = 0;
+        let velocity      = 0;
 
-        const VELOCITY_THRESHOLD = 0.25; // px/ms
-        const SWIPE_THRESHOLD    = 35;   // px
+        const SWIPE_PX  = 30;   // px to count as a swipe
+        const SWIPE_VEL = 0.2;  // px/ms to count as a flick
 
-        // Listen on the whole panel so the minimized strip is also draggable upward
-        panel.addEventListener('touchstart', onTouchStart, { passive: true });
-        panel.addEventListener('mousedown',  onMouseDown);
+        // CRITICAL: passive:false on the handle's touchstart so we can
+        // call preventDefault() on touchmove and block page scroll
+        handleArea.addEventListener('touchstart', onStart, { passive: false });
+        handleArea.addEventListener('mousedown',  onStart);
 
-        function onTouchStart(e) {
+        // Also allow dragging up from the minimized strip
+        panel.addEventListener('touchstart', (e) => {
+            if (expanded) return; // let scroll happen when expanded
+            onStart(e);
+        }, { passive: false });
+
+        function onStart(e) {
             if (!isMobile()) return;
-            // Only initiate drag from handle area OR when panel is minimized
-            const fromHandle = handleArea.contains(e.target);
-            if (!fromHandle && expanded) return; // let normal scroll happen when expanded
+            e.stopPropagation();
 
-            startY        = e.touches[0].clientY;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            startY        = clientY;
             baseTranslate = expanded ? 0 : MINIMIZED_TRANSLATE;
-            dragging      = true;
-            lastY         = startY;
-            lastTime      = Date.now();
+            liveTranslate = baseTranslate;
+            lastY         = clientY;
+            lastT         = Date.now();
             velocity      = 0;
+            dragging      = true;
+
             panel.style.transition = 'none';
             handleArea.classList.add('dragging');
-            document.addEventListener('touchmove', onTouchMove, { passive: false });
-            document.addEventListener('touchend',  onTouchEnd,  { passive: true  });
+
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend',  onEnd,  { passive: true  });
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup',   onEnd);
         }
 
-        function onMouseDown(e) {
-            if (!isMobile()) return;
-            const fromHandle = handleArea.contains(e.target);
-            if (!fromHandle && expanded) return;
-
-            startY        = e.clientY;
-            baseTranslate = expanded ? 0 : MINIMIZED_TRANSLATE;
-            dragging      = true;
-            lastY         = startY;
-            lastTime      = Date.now();
-            velocity      = 0;
-            panel.style.transition = 'none';
-            handleArea.classList.add('dragging');
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup',   onMouseUp);
-        }
-
-        function onTouchMove(e) {
+        function onMove(e) {
             if (!dragging) return;
-            e.preventDefault();
-            const dy = e.touches[0].clientY - startY;
-            applyDrag(dy, e.touches[0].clientY);
-        }
+            e.preventDefault(); // blocks scroll — works because touchstart was non-passive
 
-        function onMouseMove(e) {
-            if (!dragging) return;
-            const dy = e.clientY - startY;
-            applyDrag(dy, e.clientY);
-        }
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const now     = Date.now();
+            const dt      = Math.max(1, now - lastT);
+            velocity      = (clientY - lastY) / dt;
+            lastY         = clientY;
+            lastT         = now;
 
-        function applyDrag(dy, currentY) {
-            const now = Date.now();
-            const dt  = Math.max(1, now - lastTime);
-            velocity  = (currentY - lastY) / dt;
-            lastY     = currentY;
-            lastTime  = now;
-
-            // Raw translate = where we started + how far we've dragged
-            let raw = baseTranslate + dy;
-
-            // Clamp: never go above 0 (fully expanded) or below MINIMIZED_TRANSLATE
+            let raw = baseTranslate + (clientY - startY);
+            // clamp between fully expanded (0) and fully minimized
             raw = Math.max(0, Math.min(MINIMIZED_TRANSLATE, raw));
-
-            currentTranslate = raw;
+            liveTranslate = raw;
             panel.style.transform = `translateY(${raw}px)`;
         }
 
-        function onTouchEnd() { finalizeDrag(); }
-        function onMouseUp()  { finalizeDrag(); }
-
-        function finalizeDrag() {
+        function onEnd() {
             if (!dragging) return;
             dragging = false;
             handleArea.classList.remove('dragging');
-            document.removeEventListener('touchmove', onTouchMove);
-            document.removeEventListener('touchend',  onTouchEnd);
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup',   onMouseUp);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend',  onEnd);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup',   onEnd);
 
-            panel.style.transition = ''; // restore CSS transition
+            panel.style.transition = ''; // re-enable CSS transition for snap
 
-            const dragDelta     = currentTranslate - baseTranslate;
-            const fastSwipeDown = velocity >  VELOCITY_THRESHOLD;
-            const fastSwipeUp   = velocity < -VELOCITY_THRESHOLD;
-            const bigSwipeDown  = dragDelta >  SWIPE_THRESHOLD;
-            const bigSwipeUp    = dragDelta < -SWIPE_THRESHOLD;
+            const delta = liveTranslate - baseTranslate;
 
             if (expanded) {
-                (fastSwipeDown || bigSwipeDown) ? setMinimized() : setExpanded();
+                (velocity > SWIPE_VEL || delta > SWIPE_PX) ? setMinimized(true) : setExpanded(true);
             } else {
-                (fastSwipeUp   || bigSwipeUp  ) ? setExpanded()  : setMinimized();
+                (velocity < -SWIPE_VEL || delta < -SWIPE_PX) ? setExpanded(true) : setMinimized(true);
             }
-
-            currentTranslate = 0;
         }
 
-        // Tapping the always-visible strip also re-expands
-        panel.addEventListener('click', (e) => {
-            if (!isMobile() || expanded) return;
-            setExpanded();
+        // Tap the visible strip to re-expand
+        panel.addEventListener('click', () => {
+            if (!expanded) setExpanded(true);
         });
     })();
 
