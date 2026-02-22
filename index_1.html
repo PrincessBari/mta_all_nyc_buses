@@ -252,15 +252,15 @@
             }
 
             .info-panel {
-                /* Fixed-height bottom sheet — height NEVER changes, so bus data
-                   loading into the DOM cannot ever cause a jump */
+                /* height:auto on load so panel fits content naturally (no empty gap).
+                   JS locks the height after first bus data arrives. */
                 position: absolute;
                 bottom: 0;
                 left: 0;
                 right: 0;
                 width: 100%;
-                height: 52vh;
-                max-height: none;
+                height: auto;
+                max-height: 60vh;
                 order: 2;
                 padding: 0 18px 20px 18px;
                 border-radius: 16px 16px 0 0;
@@ -309,6 +309,20 @@
         #last-update.loading {
             animation: blink 1.2s ease-in-out infinite;
         }
+
+        /* Move Mapbox attribution to upper-left on mobile */
+        @media (max-width: 768px) {
+            .mapboxgl-ctrl-bottom-left {
+                bottom: auto !important;
+                top: 10px !important;
+                left: 10px !important;
+            }
+            .mapboxgl-ctrl-bottom-right {
+                bottom: auto !important;
+                top: 10px !important;
+                right: 10px !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -341,7 +355,7 @@
 
             <!-- ③ Collapses when minimized -->
             <div class="panel-collapsible">
-                <div style="margin-bottom: 12px;"></div>
+                <div style="margin-top: 12px;"></div>
                 <div class="stats">
                     <div class="stat-item">
                         <span class="stat-label">Active Buses</span>
@@ -509,6 +523,9 @@
         panel.addEventListener('click', () => {
             if (!expanded) setExpanded(true);
         });
+
+        // Expose so updateMap can call after locking height
+        window._recomputeMinimized = computeMinimizedTranslate;
     })();
 
     // =====================================================
@@ -826,6 +843,18 @@
                 const el = document.getElementById('last-update');
                 el.classList.remove('loading');
                 el.textContent = new Date().toLocaleTimeString();
+
+                // After first data load on mobile, lock the panel height so
+                // subsequent DOM updates (borough list refreshing) can't cause a jump
+                if (window.innerWidth <= 768) {
+                    const panel = document.getElementById('info-panel');
+                    if (!panel.dataset.heightLocked) {
+                        panel.dataset.heightLocked = '1';
+                        panel.style.height = panel.offsetHeight + 'px';
+                        panel.style.maxHeight = 'none';
+                        if (window._recomputeMinimized) window._recomputeMinimized();
+                    }
+                }
             })
             .catch(error => {
                 console.error(`Fetch #${fetchId} failed — keeping existing markers:`, error);
