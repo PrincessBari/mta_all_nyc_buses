@@ -23,6 +23,7 @@
             width: 100%;
             height: 100%;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overscroll-behavior: none;
         }
         
         #container {
@@ -201,23 +202,110 @@
             padding: 6px 10px;
             color: #6b7280;
         }
-        
-        /* Mobile responsive */
+
+        /* =====================
+           DRAG HANDLE (mobile)
+        ===================== */
+        .drag-handle-area {
+            display: none; /* hidden on desktop */
+        }
+
+        .drag-handle-bar {
+            width: 40px;
+            height: 4px;
+            background: #d1d5db;
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+
+        .drag-handle-area:active .drag-handle-bar,
+        .drag-handle-area.dragging .drag-handle-bar {
+            background: #9ca3af;
+        }
+
+        /* Panel title row visible in both states */
+        .panel-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        /* Content that hides when minimized */
+        .panel-collapsible {
+            /* no special rules on desktop */
+        }
+
+        /* =====================
+           MOBILE LAYOUT
+        ===================== */
         @media (max-width: 768px) {
             #container {
                 flex-direction: column;
+                position: relative;
             }
-            
-            .info-panel {
-                width: 100%;
-                max-height: 40vh;
-                order: 2;
-            }
-            
+
             #map {
-                height: 60vh;
+                /* always fills all available space */
+                flex: 1;
                 order: 1;
+                height: 100%;
             }
+
+            .info-panel {
+                /* Fixed height bottom sheet — prevents jumping when bus data loads */
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: 40vh;
+                max-height: none;
+                order: 2;
+                padding: 0 18px 20px 18px;
+                border-radius: 16px 16px 0 0;
+                box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+                overflow-y: hidden;
+                overflow-x: hidden;
+
+                transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateY(0);
+                will-change: transform;
+                visibility: hidden;
+            }
+
+            .panel-collapsible {
+                overflow-y: auto;
+                max-height: calc(40vh - 140px);
+            }
+
+            .drag-handle-area {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: calc(100% + 36px);   /* bleed to panel edges */
+                margin: 0 -18px;
+                padding: 8px 0 14px;
+                cursor: grab;
+                touch-action: none;
+                user-select: none;
+                -webkit-user-select: none;
+            }
+
+            .drag-handle-area:active {
+                cursor: grabbing;
+            }
+
+            /* Title row on mobile: title left, live indicator right */
+            .panel-title-row {
+                margin-bottom: 6px;
+            }
+
+            .info-panel h1 {
+                font-size: 18px;
+                margin-bottom: 0;
+            }
+
         }
 
         @keyframes blink {
@@ -227,45 +315,233 @@
         #last-update.loading {
             animation: blink 1.2s ease-in-out infinite;
         }
+
+        /* Move Mapbox attribution to upper-left on mobile */
+        @media (max-width: 768px) {
+            .mapboxgl-ctrl-bottom-left {
+                bottom: auto !important;
+                top: 8px !important;
+                left: 3px !important;
+            }
+            .mapboxgl-ctrl-bottom-right {
+                bottom: auto !important;
+                top: -2px !important;
+                right: -2px !important;
+            }
+        }
     </style>
 </head>
 <body>
     <div id="container">
         <div id="map"></div>
         
-        <div class="info-panel">
-            <h1>NYC Live MTA Bus Tracker</h1>
+        <div class="info-panel panel-expanded" id="info-panel">
+
+            <!-- ① Drag handle (mobile only) -->
+            <div class="drag-handle-area" id="drag-handle-area">
+                <div class="drag-handle-bar"></div>
+            </div>
+
+            <!-- ② Always-visible header content -->
+            <div class="panel-always-visible">
+            <div class="panel-title-row">
+                <h1>NYC Live MTA Bus Tracker</h1>
+            </div>
+
+            <!-- subtitle, last-updated, and hint always visible -->
             <div class="subtitle">Updates every 45 seconds (Data source: <a href="https://bustime.mta.info/wiki/Developers/Index" target="_blank" rel="noopener noreferrer" style="color: #1e40af;">MTA Bus Time API</a>)</div>
             
             <div class="last-update" style="margin-top: 0; margin-bottom: 0; padding-top: 0; border-top: none;">
                 Last updated: <strong id="last-update">Initial load takes up to 45 seconds...</strong>
             </div>
-            <div style="font-size: 12px; color: #2563eb; margin-top: 3px; margin-bottom: 12px; line-height: 1.3;">
+            <div style="font-size: 12px; color: #2563eb; margin-top: 3px; margin-bottom: 0; line-height: 1.3;">
                 Hover or tap on bus on map for details
             </div>
-            
-            <div class="stats">
-                <div class="stat-item">
-                    <span class="stat-label">Active Buses</span>
-                    <span class="stat-value" id="bus-count">0</span>
+            </div><!-- end .panel-always-visible -->
+
+            <!-- ③ Collapses when minimized -->
+            <div class="panel-collapsible">
+                <div style="margin-top: 12px;"></div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Active Buses</span>
+                        <span class="stat-value" id="bus-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Routes</span>
+                        <span class="stat-value" id="route-count">0</span>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Routes</span>
-                    <span class="stat-value" id="route-count">0</span>
+                
+                <div class="borough-section">
+                    <h3>Service Area/Type</h3>
+                    <div style="font-size: 12px; color: #2563eb; margin-top: -8px; margin-bottom: 12px; line-height: 1.3;">
+                        Select bus from dropdown to find on map
+                    </div>
+                    <div id="borough-list"></div>
                 </div>
-            </div>
-            
-            <div class="borough-section">
-                <h3>Service Area/Type</h3>
-                <div style="font-size: 12px; color: #2563eb; margin-top: -8px; margin-bottom: 12px; line-height: 1.3;">
-                    Select bus from dropdown to find on map
-                </div>
-                <div id="borough-list"></div>
-            </div>
-        </div>
+            </div><!-- end .panel-collapsible -->
+
+        </div><!-- end .info-panel -->
     </div>
 
     <script>
+    // =====================================================
+    //  MOBILE DRAG HANDLE — snap to expanded / minimized
+    // =====================================================
+    (function () {
+        const isMobile = () => window.innerWidth <= 768;
+        if (!isMobile()) return;
+
+        const panel      = document.getElementById('info-panel');
+        const handleArea = document.getElementById('drag-handle-area');
+
+        // Panel has a fixed CSS height (52vh). MINIMIZED_TRANSLATE slides it
+        // down so only the always-visible strip peeks above the bottom edge.
+        // We compute it once from the DOM, then it never needs to change
+        // (because the panel height is fixed — not auto).
+        let MINIMIZED_TRANSLATE = 0;
+        let expanded = true;
+
+        function computeMinimizedTranslate() {
+            const alwaysVisible = panel.querySelector('.panel-always-visible');
+            const handleH   = handleArea.offsetHeight;
+            const visibleH  = alwaysVisible ? alwaysVisible.offsetHeight : 110;
+            const panelH    = panel.offsetHeight;
+            // slide down enough that only handle + always-visible content shows
+            MINIMIZED_TRANSLATE = panelH - handleH - visibleH;
+            if (MINIMIZED_TRANSLATE < 0) MINIMIZED_TRANSLATE = 0;
+        }
+
+        function setExpanded(animate) {
+            expanded = true;
+            if (!animate) panel.style.transition = 'none';
+            panel.style.height = '65vh';
+            document.querySelector('.panel-collapsible').style.maxHeight = 'calc(65vh - 140px)';
+            panel.style.transform = 'translateY(0)';
+            panel.style.overflowY = 'hidden';
+            if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
+            setTimeout(() => computeMinimizedTranslate(), 50);
+        }
+
+        function setMinimized(animate) {
+            expanded = false;
+            computeMinimizedTranslate();
+            if (!animate) panel.style.transition = 'none';
+            panel.style.transform = `translateY(${MINIMIZED_TRANSLATE}px)`;
+            panel.style.overflowY = 'hidden';
+            if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
+        }
+
+        // Compute after layout settles
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                computeMinimizedTranslate();
+                panel.style.height = '40vh'; // lock in initial height, don't let setExpanded override it
+                panel.style.visibility = 'visible';
+            }, 100);
+        });
+
+        window.addEventListener('resize', () => {
+            computeMinimizedTranslate();
+            expanded ? setExpanded(false) : setMinimized(false);
+        });
+
+        // ── Drag state ──
+        let dragging      = false;
+        let startY        = 0;
+        let baseTranslate = 0;
+        let liveTranslate = 0;
+        let lastY         = 0;
+        let lastT         = 0;
+        let velocity      = 0;
+
+        const SWIPE_PX  = 30;   // px to count as a swipe
+        const SWIPE_VEL = 0.2;  // px/ms to count as a flick
+
+        // CRITICAL: passive:false on the handle's touchstart so we can
+        // call preventDefault() on touchmove and block page scroll
+        handleArea.addEventListener('touchstart', onStart, { passive: false });
+        handleArea.addEventListener('mousedown',  onStart);
+
+        // Also allow dragging up from the minimized strip
+        panel.addEventListener('touchstart', (e) => {
+            if (expanded) return; // let scroll happen when expanded
+            onStart(e);
+        }, { passive: false });
+
+        function onStart(e) {
+            if (!isMobile()) return;
+            e.stopPropagation();
+
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            startY        = clientY;
+            baseTranslate = expanded ? 0 : MINIMIZED_TRANSLATE;
+            liveTranslate = baseTranslate;
+            lastY         = clientY;
+            lastT         = Date.now();
+            velocity      = 0;
+            dragging      = true;
+
+            panel.style.transition = 'none';
+            handleArea.classList.add('dragging');
+
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend',  onEnd,  { passive: true  });
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup',   onEnd);
+        }
+
+        function onMove(e) {
+            if (!dragging) return;
+            e.preventDefault(); // blocks scroll — works because touchstart was non-passive
+
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const now     = Date.now();
+            const dt      = Math.max(1, now - lastT);
+            velocity      = (clientY - lastY) / dt;
+            lastY         = clientY;
+            lastT         = now;
+
+            let raw = baseTranslate + (clientY - startY);
+            // clamp between fully expanded (0) and fully minimized
+            raw = Math.max(0, Math.min(MINIMIZED_TRANSLATE, raw));
+            liveTranslate = raw;
+            panel.style.transform = `translateY(${raw}px)`;
+        }
+
+        function onEnd() {
+            if (!dragging) return;
+            dragging = false;
+            handleArea.classList.remove('dragging');
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend',  onEnd);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup',   onEnd);
+
+            panel.style.transition = ''; // re-enable CSS transition for snap
+
+            const delta = liveTranslate - baseTranslate;
+
+            if (expanded) {
+                (velocity > SWIPE_VEL || delta > SWIPE_PX) ? setMinimized(true) : setExpanded(true);
+            } else {
+                (velocity < -SWIPE_VEL || delta < -SWIPE_PX) ? setExpanded(true) : setMinimized(true);
+            }
+        }
+
+        // Tap the visible strip to re-expand
+        panel.addEventListener('click', () => {
+            if (!expanded) setExpanded(true);
+        });
+
+        // Expose so updateMap can call after locking height
+        window._recomputeMinimized = computeMinimizedTranslate;
+    })();
+
+    // =====================================================
+    //  MAP + BUS TRACKER
+    // =====================================================
     mapboxgl.accessToken = 'pk.eyJ1IjoiYmlvcGl4aWUiLCJhIjoiY21saGcyMHlsMDhtcjNkb205bTVtcDNraSJ9.QW9C9Oatp3hcGYvWfrD84g';
     
     const boroughColors = {
@@ -288,25 +564,15 @@
         antialias: true
     });
 
-    // Handle mobile tab-switching: restore map when page becomes visible again
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-            // Resize forces Mapbox to re-check the canvas and restore WebGL context
             map.resize();
-            
-            // Trigger an immediate data refresh instead of waiting for the next interval
             updateMap();
         }
     });
 
-    // KEY CHANGE: Map keyed by vehicle_id instead of a plain array
-    // Each entry: { marker, el, route, lastSeen }
     const busMarkers = new Map();
-
-    // How long before we consider a bus truly gone (5 minutes = 6+ missed refreshes)
     const EXPIRY_MS = 5 * 60 * 1000;
-
-    // Prevent race conditions: ignore responses that arrive out of order
     let currentFetchId = 0;
     let lastCompletedFetchId = 0;
 
@@ -328,7 +594,6 @@
 
     function showRoute(routeId, color) {
         if (!map.getLayer('bus-route-line')) return;
-        console.log('showRoute called with:', routeId);
         map.setPaintProperty('bus-route-line', 'line-color', color);
         map.setFilter('bus-route-line', ['==', 'route_id', routeId]);
     }
@@ -338,7 +603,6 @@
         map.setFilter('bus-route-line', ['==', 'route_id', '']);
     }
 
-    // Load route shapes from GeoJSON
     map.on('load', () => {
         fetch('https://raw.githubusercontent.com/PrincessBari/mta_all_nyc_buses/multiline-routes/routes.geojson?v=3')
             .then(r => r.json())
@@ -361,7 +625,7 @@
                         'line-width': 3,
                         'line-opacity': 0.8
                     },
-                    filter: ['==', 'route_id', '']  // hidden by default
+                    filter: ['==', 'route_id', '']
                 });
 
                 console.log('Bus route shapes loaded');
@@ -433,23 +697,14 @@
 
     function updateMap() {
         const fetchId = ++currentFetchId;
-        console.log(`updateMap called (fetch #${fetchId})`);
 
         fetch('https://6bzmgql6bejgixjbtk5m2csisi0aaunm.lambda-url.us-east-1.on.aws/')
-            .then(response => {
-                console.log(`Fetch #${fetchId} got response:`, response.status);
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                // If a newer fetch has already completed, discard this out-of-order response
-                if (fetchId < lastCompletedFetchId) {
-                    console.log(`Discarding out-of-order fetch #${fetchId} (already completed #${lastCompletedFetchId})`);
-                    return;
-                }
+                if (fetchId < lastCompletedFetchId) return;
                 lastCompletedFetchId = fetchId;
 
                 const parsedData = typeof data.body === 'string' ? JSON.parse(data.body) : data;
-                console.log(`Fetch #${fetchId}: ${parsedData.buses?.length} buses`);
 
                 if (!parsedData || !parsedData.buses || parsedData.buses.length === 0) {
                     console.warn('Empty or missing bus data — keeping existing markers on map');
@@ -461,9 +716,7 @@
                 const boroughCounts = parsedData.borough_counts || {};
                 const routeCounts = parsedData.route_counts || {};
 
-                // --- UPDATE OR CREATE markers (never clear) ---
                 buses.forEach(bus => {
-                    // Skip any bus with missing or zero coordinates
                     const lat = parseFloat(bus.latitude);
                     const lng = parseFloat(bus.longitude);
                     if (!bus.route || !lat || !lng || lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) return;
@@ -473,14 +726,11 @@
                     const routeDisplay = String(bus.route).replace('-', '');
 
                     if (busMarkers.has(vehicleId)) {
-                        // Bus already on map — just move it and refresh timestamp
                         const entry = busMarkers.get(vehicleId);
                         entry.marker.setLngLat([lng, lat]);
                         entry.lastSeen = now;
-                        // Update color if route somehow changed
                         entry.el.style.backgroundColor = color;
                     } else {
-                        // New bus — create marker and store it
                         const el = createBusElement(color, routeDisplay);
                         el._route = bus.route;
 
@@ -533,16 +783,13 @@
                     }
                 });
 
-                // --- EXPIRE buses not seen in 5 minutes ---
                 busMarkers.forEach((entry, vehicleId) => {
                     if (now - entry.lastSeen > EXPIRY_MS) {
-                        console.log(`Expiring bus ${vehicleId} (not seen for 5+ min)`);
                         entry.marker.remove();
                         busMarkers.delete(vehicleId);
                     }
                 });
 
-                // --- Update stats panel ---
                 document.getElementById('bus-count').textContent = busMarkers.size;
 
                 const uniqueRoutes = new Set();
@@ -552,7 +799,6 @@
                 const boroughList = document.getElementById('borough-list');
                 const boroughOrder = ['Manhattan', 'Bronx', 'Queens', 'Brooklyn', 'Staten Island', 'Express'];
 
-                // Preserve which boroughs are currently open across refreshes
                 const openBoroughs = new Set(
                     [...document.querySelectorAll('.borough-header.open')]
                         .map(el => el.dataset.borough)
@@ -572,7 +818,6 @@
                     const routeHTML = Object.entries(boroughRoutes)
                         .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
                         .map(([route, rCount]) => {
-                            // Find color for this route from any of its markers
                             let routeColor = '#6b7280';
                             busMarkers.forEach(entry => {
                                 if (entry.route === route) routeColor = entry.el.style.backgroundColor;
@@ -609,10 +854,10 @@
                 const el = document.getElementById('last-update');
                 el.classList.remove('loading');
                 el.textContent = new Date().toLocaleTimeString();
+
             })
             .catch(error => {
                 console.error(`Fetch #${fetchId} failed — keeping existing markers:`, error);
-                // Intentionally do nothing to the map
             });
     }
     </script>
