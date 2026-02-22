@@ -270,6 +270,7 @@
                 transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
                 transform: translateY(0);
                 will-change: transform;
+                visibility: hidden;
             }
 
             .panel-collapsible {
@@ -415,6 +416,7 @@
             expanded = true;
             if (!animate) panel.style.transition = 'none';
             panel.style.height = '65vh';
+            document.querySelector('.panel-collapsible').style.maxHeight = 'calc(65vh - 140px)';
             panel.style.transform = 'translateY(0)';
             panel.style.overflowY = 'hidden';
             if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
@@ -435,6 +437,7 @@
             setTimeout(() => {
                 computeMinimizedTranslate();
                 panel.style.height = '40vh'; // lock in initial height, don't let setExpanded override it
+                panel.style.visibility = 'visible';
             }, 100);
         });
 
