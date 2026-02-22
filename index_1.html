@@ -423,6 +423,7 @@
 
         function setMinimized(animate) {
             expanded = false;
+            computeMinimizedTranslate();
             if (!animate) panel.style.transition = 'none';
             panel.style.transform = `translateY(${MINIMIZED_TRANSLATE}px)`;
             panel.style.overflowY = 'hidden';
