@@ -252,8 +252,7 @@
             }
 
             .info-panel {
-                /* height:auto on load so panel fits content naturally (no empty gap).
-                   JS locks the height after first bus data arrives. */
+                /* Fixed height bottom sheet — prevents jumping when bus data loads */
                 position: absolute;
                 bottom: 0;
                 left: 0;
@@ -265,12 +264,17 @@
                 padding: 0 18px 20px 18px;
                 border-radius: 16px 16px 0 0;
                 box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
-                overflow-y: auto;
+                overflow-y: hidden;
                 overflow-x: hidden;
 
                 transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
                 transform: translateY(0);
                 will-change: transform;
+            }
+
+            .panel-collapsible {
+                overflow-y: auto;
+                max-height: calc(40vh - 140px);
             }
 
             .drag-handle-area {
