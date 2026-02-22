@@ -432,7 +432,7 @@
         window.addEventListener('load', () => {
             setTimeout(() => {
                 computeMinimizedTranslate();
-                // panel starts expanded — no transform needed
+                panel.style.height = '40vh'; // lock in initial height, don't let setExpanded override it
             }, 100);
         });
 
