@@ -210,7 +210,7 @@
         }
 
         .drag-handle-bar {
-            width: 36px;
+            width: 40px;
             height: 4px;
             background: #d1d5db;
             border-radius: 2px;
@@ -849,17 +849,6 @@
                 el.classList.remove('loading');
                 el.textContent = new Date().toLocaleTimeString();
 
-                // After first data load on mobile, lock the panel height so
-                // subsequent DOM updates (borough list refreshing) can't cause a jump
-                if (window.innerWidth <= 768) {
-                    const panel = document.getElementById('info-panel');
-                    if (!panel.dataset.heightLocked) {
-                        panel.dataset.heightLocked = '1';
-                        panel.style.height = panel.offsetHeight + 'px';
-                        panel.style.maxHeight = 'none';
-                        if (window._recomputeMinimized) window._recomputeMinimized();
-                    }
-                }
             })
             .catch(error => {
                 console.error(`Fetch #${fetchId} failed — keeping existing markers:`, error);
