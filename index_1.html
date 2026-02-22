@@ -413,11 +413,12 @@
 
         function setExpanded(animate) {
             expanded = true;
-            panel.style.height = '65vh';
             if (!animate) panel.style.transition = 'none';
+            panel.style.height = '65vh';
             panel.style.transform = 'translateY(0)';
             panel.style.overflowY = 'hidden';
             if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
+            setTimeout(() => computeMinimizedTranslate(), 50);
         }
 
         function setMinimized(animate) {
