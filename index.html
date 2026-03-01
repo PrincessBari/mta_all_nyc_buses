@@ -789,6 +789,14 @@
                         entry.marker.setLngLat([lng, lat]);
                         entry.lastSeen = now;
                         entry.el.style.backgroundColor = color;
+
+                        const stopsList = document.getElementById(`stops-${vehicleId}`);
+                        if (stopsList && bus.next_stops && bus.next_stops.length > 0) {
+                            stopsList.innerHTML = bus.next_stops.map(stop =>
+                                `<li style="margin: 2px 0;">${stop}</li>`
+                            ).join('');
+                        }
+
                     } else {
                         const el = createBusElement(color, routeDisplay);
                         el._route = bus.route;
@@ -813,7 +821,7 @@
                             popupHTML += `
                                 <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
                                     <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 4px;">Next Stops</div>
-                                    <ol style="margin: 0; padding-left: 18px; font-size: 11px; color: #6b7280; line-height: 1.5;">
+                                    <ol id="stops-${vehicleId}" style="margin: 0; padding-left: 18px; font-size: 11px; color: #6b7280; line-height: 1.5;">
                             `;
                             bus.next_stops.forEach(stop => {
                                 popupHTML += `<li style="margin: 2px 0;">${stop}</li>`;
