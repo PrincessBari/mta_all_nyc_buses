@@ -596,11 +596,18 @@
         if (!map.getLayer('bus-route-line')) return;
         map.setPaintProperty('bus-route-line', 'line-color', color);
         map.setFilter('bus-route-line', ['==', 'route_id', routeId]);
+
+        if (!map.getLayer('bus-stop-circles') || !map.isSourceLoaded('bus-stops')) return;
+        map.setPaintProperty('bus-stop-circles', 'circle-stroke-color', color);
+        map.setFilter('bus-stop-circles', ['==', 'route_id', routeId]);
     }
 
     function hideRoute() {
         if (!map.getLayer('bus-route-line')) return;
         map.setFilter('bus-route-line', ['==', 'route_id', '']);
+
+        if (!map.getLayer('bus-stop-circles') || !map.isSourceLoaded('bus-stops')) return;
+        map.setFilter('bus-stop-circles', ['==', 'route_id', '']);
     }
 
     map.on('load', () => {
@@ -631,6 +638,34 @@
                 console.log('Bus route shapes loaded');
             })
             .catch(err => console.error('Failed to load route shapes:', err));
+
+        fetch('https://raw.githubusercontent.com/PrincessBari/mta_all_nyc_buses/refs/heads/add_bus_stops/stops.geojson')
+            .then(r => r.json())
+            .then(geojson => {
+                map.addSource('bus-stops', {
+                    type: 'geojson',
+                    data: geojson,
+                    tolerance: 0,
+                    buffer: 128
+                });
+
+                map.addLayer({
+                    id: 'bus-stop-circles',
+                    type: 'circle',
+                    source: 'bus-stops',
+                    paint: {
+                        'circle-radius': 3.5,
+                        'circle-color': '#ffffff',
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': ['get', 'route_color'],
+                        'circle-opacity': 0.9
+                    },
+                    filter: ['==', 'route_id', '']
+                });
+
+                console.log('Bus stops loaded');
+            })
+            .catch(err => console.error('Failed to load bus stops:', err));
 
         document.getElementById('last-update').classList.add('loading');    
         updateMap();
@@ -686,6 +721,30 @@
             el.style.fontSize = (textLength >= 4 ? Math.floor(baseSize * 0.35) : Math.floor(baseSize * 0.5)) + 'px';
         });
     });
+
+    map.on('zoom', () => {
+        const zoom = map.getZoom();
+        const baseSize = zoom < 10 ? 12 : (zoom < 12 ? 16 : (zoom < 14 ? 18 : 22));
+        
+        busMarkers.forEach(({ el }) => {
+            const textLength = el.textContent.length;
+            let width;
+            if (textLength <= 2) width = baseSize;
+            else if (textLength === 3) width = baseSize + 4;
+            else if (textLength === 4) width = baseSize + 8;
+            else width = baseSize + 12;
+            
+            el.style.width = width + 'px';
+            el.style.height = baseSize + 'px';
+            el.style.fontSize = (textLength >= 4 ? Math.floor(baseSize * 0.35) : Math.floor(baseSize * 0.5)) + 'px';
+        });
+    });
+
+        document.getElementById('map').addEventListener('mousemove', (e) => {
+            if (!e.target.closest('[style*="border-radius: 50%"]')) {
+                hideRoute();
+            }
+        });
 
     function toggleBorough(header) {
         const isOpen = header.classList.toggle('open');
