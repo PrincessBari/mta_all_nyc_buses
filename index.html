@@ -361,6 +361,26 @@
 
             <!-- ③ Collapses when minimized -->
             <div class="panel-collapsible">
+                <!-- Bus detail panel (shown when a bus is selected) -->
+                <div id="bus-detail" style="display: none; margin-top: 12px; margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div id="bus-detail-route" style="font-size: 18px; font-weight: 600;"></div>
+                        <div id="bus-detail-borough" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 2px;"></div>
+                        <button onclick="clearBusDetail()" style="background: none; border: none; font-size: 18px; color: #6b7280; cursor: pointer;">✕</button>
+                    </div>
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">To</div>
+                    <div id="bus-detail-destination" style="font-size: 13px; font-weight: 500; color: #1f2937; margin-bottom: 8px;"></div>
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">Bus</div>
+                    <div id="bus-detail-vehicle" style="font-size: 13px; font-weight: 500; color: #1f2937; margin-bottom: 8px;"></div>
+                    <div id="bus-detail-stops-section" style="display: none;">
+                        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 4px;">Next Stops</div>
+                        <ol id="bus-detail-stops" style="margin: 0; padding-left: 18px; font-size: 11px; color: #6b7280; line-height: 1.5;"></ol>
+                    </div>
+                    <div id="bus-detail-disclaimer" style="display: none; font-size: 11px; color: #999; margin-top: 8px; line-height: 1.4;">
+                        * Next stop data reflects scheduled trips and may be inaccurate if a bus has been reassigned or is off schedule.
+                    </div>
+                </div>
+
                 <div style="margin-top: 12px;"></div>
                 <div class="stats">
                     <div class="stat-item">
@@ -379,9 +399,6 @@
                         Select bus from dropdown to find on map
                     </div>
                     <div id="borough-list"></div>
-                    <div style="font-size: 11px; color: #999; margin-top: 12px; line-height: 1.4;">
-                    * Next stop data reflects scheduled trips and may be inaccurate if a bus has been reassigned or is off schedule.
-                    </div>
                 </div>
             </div><!-- end .panel-collapsible -->
 
@@ -725,23 +742,9 @@
         });
     });
 
-    map.on('zoom', () => {
-        const zoom = map.getZoom();
-        const baseSize = zoom < 10 ? 12 : (zoom < 12 ? 16 : (zoom < 14 ? 18 : 22));
-        
-        busMarkers.forEach(({ el }) => {
-            const textLength = el.textContent.length;
-            let width;
-            if (textLength <= 2) width = baseSize;
-            else if (textLength === 3) width = baseSize + 4;
-            else if (textLength === 4) width = baseSize + 8;
-            else width = baseSize + 12;
-            
-            el.style.width = width + 'px';
-            el.style.height = baseSize + 'px';
-            el.style.fontSize = (textLength >= 4 ? Math.floor(baseSize * 0.35) : Math.floor(baseSize * 0.5)) + 'px';
+        map.on('click', () => {
+            clearBusDetail();
         });
-    });
 
         document.getElementById('map').addEventListener('mousemove', (e) => {
             if (!e.target.closest('[style*="border-radius: 50%"]')) {
@@ -756,6 +759,33 @@
             routeList.classList.toggle('open', isOpen);
         }
     }
+
+    function showBusDetail(bus, color) {
+        document.getElementById('bus-detail-borough').textContent = `Service Route: ${bus.borough}`;
+        document.getElementById('bus-detail-route').textContent = bus.route;
+        document.getElementById('bus-detail-route').style.color = color;
+        document.getElementById('bus-detail-destination').textContent = bus.destination;
+        document.getElementById('bus-detail-vehicle').textContent = bus.vehicle_id;
+
+        const stopsSection = document.getElementById('bus-detail-stops-section');
+        const stopsList = document.getElementById('bus-detail-stops');
+        if (bus.next_stops && bus.next_stops.length > 0) {
+            stopsList.innerHTML = bus.next_stops.map(stop => `<li style="margin: 2px 0;">${stop}</li>`).join('');
+            stopsSection.style.display = 'block';
+            document.getElementById('bus-detail-disclaimer').style.display = 'block';
+        } else {
+            stopsSection.style.display = 'none';
+            document.getElementById('bus-detail-disclaimer').style.display = 'none';
+        }
+
+        document.getElementById('bus-detail').style.display = 'block';
+    }
+
+    function clearBusDetail() {
+        document.getElementById('bus-detail').style.display = 'none';
+        hideRoute();
+    }
+
 
     function updateMap() {
         const fetchId = ++currentFetchId;
@@ -793,60 +823,35 @@
                         entry.lastSeen = now;
                         entry.el.style.backgroundColor = color;
 
-                        const stopsList = document.getElementById(`stops-${vehicleId}`);
-                        if (stopsList && bus.next_stops && bus.next_stops.length > 0) {
-                            stopsList.innerHTML = bus.next_stops.map(stop =>
-                                `<li style="margin: 2px 0;">${stop}</li>`
-                            ).join('');
-                        }
-
                     } else {
                         const el = createBusElement(color, routeDisplay);
                         el._route = bus.route;
-
-                        let popupHTML = `
-                            <div style="font-family: 'Inter', -apple-system, sans-serif; min-width: 180px;">
-                                <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
-                                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 2px;">Route • ${bus.borough}</div>
-                                    <div style="font-size: 18px; font-weight: 600; color: ${color}; line-height: 1.2;">${bus.route}</div>
-                                </div>
-                                <div style="margin-bottom: 6px; line-height: 1.3;">
-                                    <span style="font-size: 11px; color: #6b7280;">Bus</span>
-                                    <span style="font-size: 13px; color: #1f2937; margin-left: 8px; font-weight: 500;">${bus.vehicle_id}</span>
-                                </div>
-                                <div style="margin-bottom: 6px; line-height: 1.3;">
-                                    <span style="font-size: 11px; color: #6b7280;">To</span>
-                                    <span style="font-size: 13px; color: #1f2937; margin-left: 8px; font-weight: 500;">${bus.destination}</span>
-                                </div>
-                        `;
-
-                        if (bus.next_stops && bus.next_stops.length > 0) {
-                            popupHTML += `
-                                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 500; margin-bottom: 4px;">Next Stops</div>
-                                    <ol id="stops-${vehicleId}" style="margin: 0; padding-left: 18px; font-size: 11px; color: #6b7280; line-height: 1.5;">
-                            `;
-                            bus.next_stops.forEach(stop => {
-                                popupHTML += `<li style="margin: 2px 0;">${stop}</li>`;
-                            });
-                            popupHTML += '</ol></div>';
-                        }
-                        popupHTML += '</div>';
-
-                        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupHTML);
-
+                       
                         const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
                             .setLngLat([bus.longitude, bus.latitude])
-                            .setPopup(popup)
                             .addTo(map);
 
+                        const isTouchDevice = () => window.matchMedia('(hover: none)').matches;
+
                         el.addEventListener('mouseenter', () => {
-                            popup.addTo(map);
-                            showRoute(bus.route, color);
+                            if (!isTouchDevice()) {
+                                showBusDetail(bus, color);
+                                showRoute(bus.route, color);
+                            }
                         });
+
                         el.addEventListener('mouseleave', () => {
-                            popup.remove();
-                            hideRoute();
+                            if (!isTouchDevice()) {
+                                clearBusDetail();
+                            }
+                        });
+
+                        el.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (isTouchDevice()) {
+                                showBusDetail(bus, color);
+                                showRoute(bus.route, color);
+                            }
                         });
 
                         busMarkers.set(vehicleId, { marker, el, route: bus.route, lastSeen: now });
