@@ -439,9 +439,13 @@
         // Compute after layout settles
         window.addEventListener('load', () => {
             document.fonts.ready.then(() => {
-                computeMinimizedTranslate();
-                panel.style.height = '40vh';
-                panel.style.visibility = 'visible';
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        computeMinimizedTranslate();
+                        panel.style.height = '40vh';
+                        panel.style.visibility = 'visible';
+                    });
+                });
             });
         });
 
