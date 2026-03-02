@@ -600,7 +600,7 @@
     let currentFetchId = 0;
     let lastCompletedFetchId = 0;
     let selectedRoute = null;
-    const isTouchDevice = () => window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    const isTouchDevice = () => navigator.maxTouchPoints > 0;
 
     window.addEventListener('load', () => {
         const hint = document.querySelector('.panel-always-visible [style*="color: #2563eb"]');
