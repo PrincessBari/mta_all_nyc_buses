@@ -455,11 +455,15 @@
 
         // Compute after layout settles
         window.addEventListener('load', () => {
-            setTimeout(() => {
-                computeMinimizedTranslate();
-                panel.style.height = '40vh'; // lock in initial height, don't let setExpanded override it
-                panel.style.visibility = 'visible';
-            }, 100);
+            document.fonts.ready.then(() => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        computeMinimizedTranslate();
+                        panel.style.height = '40vh';
+                        panel.style.visibility = 'visible';
+                    });
+                });
+            });
         });
 
         window.addEventListener('resize', () => {
