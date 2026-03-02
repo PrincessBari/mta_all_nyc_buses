@@ -599,6 +599,17 @@
     const EXPIRY_MS = 5 * 60 * 1000;
     let currentFetchId = 0;
     let lastCompletedFetchId = 0;
+    let selectedRoute = null;
+    const isTouchDevice = () => window.matchMedia('(hover: none)').matches;
+
+    window.addEventListener('load', () => {
+        const hint = document.querySelector('.panel-always-visible [style*="color: #2563eb"]');
+        if (hint) {
+            hint.textContent = isTouchDevice()
+                ? 'Tap a bus for details'
+                : 'Hover for preview · Click to lock route · Click map to dismiss';
+        }
+    });
 
     function glowBuses(route) {
         busMarkers.forEach(({ el }) => {
@@ -751,7 +762,7 @@
         });
 
         document.getElementById('map').addEventListener('mousemove', (e) => {
-            if (!e.target.closest('[style*="border-radius: 50%"]')) {
+            if (!selectedRoute && !e.target.closest('[style*="border-radius: 50%"]')) {
                 hideRoute();
             }
         });
@@ -786,6 +797,8 @@
     }
 
     function clearBusDetail() {
+        selectedRoute = null;
+        unglowBuses();
         document.getElementById('bus-detail').style.display = 'none';
         hideRoute();
     }
@@ -835,24 +848,29 @@
                             .setLngLat([bus.longitude, bus.latitude])
                             .addTo(map);
 
-                        const isTouchDevice = () => window.matchMedia('(hover: none)').matches;
-
                         el.addEventListener('mouseenter', () => {
-                            if (!isTouchDevice()) {
+                            if (!isTouchDevice() && !selectedRoute) {
                                 showBusDetail(bus, color);
                                 showRoute(bus.route, color);
                             }
                         });
 
                         el.addEventListener('mouseleave', () => {
-                            if (!isTouchDevice()) {
+                            if (!isTouchDevice() && !selectedRoute) {
                                 clearBusDetail();
                             }
                         });
 
                         el.addEventListener('click', (e) => {
                             e.stopPropagation();
+                            unglowBuses(); // clear any previous glow first
+                            el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
+                            el.style.border = '2px solid #fbbf24';
                             if (isTouchDevice()) {
+                                showBusDetail(bus, color);
+                                showRoute(bus.route, color);
+                            } else {
+                                selectedRoute = bus.route;
                                 showBusDetail(bus, color);
                                 showRoute(bus.route, color);
                             }
