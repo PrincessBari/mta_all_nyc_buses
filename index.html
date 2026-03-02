@@ -605,8 +605,6 @@
     window.addEventListener('load', () => {
         const hint = document.querySelector('.panel-always-visible [style*="color: #2563eb"]');
         if (hint) {
-            const touchCheck = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-            console.log('isTouchDevice:', touchCheck);
             hint.textContent = isTouchDevice()
                 ? 'Tap a bus for details'
                 : 'Hover for preview · Click to lock route · Click map to dismiss';
