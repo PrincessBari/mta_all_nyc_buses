@@ -386,7 +386,10 @@
 
     <script>
     // =====================================================
-    //  MOBILE DRAG HANDLE — 3-snap: minimized / mid / full
+    //  MOBILE DRAG HANDLE — 3-snap, pure translateY
+    //  Panel is always 88vh tall. Movement is 100% translateY.
+    //  No height changes during drag — eliminates all jank.
+    //  snap 0 = minimized (peek), snap 1 = mid, snap 2 = full
     // =====================================================
     (function () {
         const isMobile = () => window.innerWidth <= 768;
@@ -394,115 +397,66 @@
 
         const panel      = document.getElementById('info-panel');
         const handleArea = document.getElementById('drag-handle-area');
+        const PANEL_VH   = 88; // panel is always this tall
+        const SNAP_COUNT = 3;
+        const TRANSITION = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
 
-        // ── Snap levels ──────────────────────────────────────────
-        // SNAP_HEIGHTS: CSS height of the panel at each snap level
-        // snap index: 0 = minimized peek, 1 = mid (default), 2 = full
-        const SNAP_HEIGHTS = ['40vh', '40vh', '88vh'];
-        const SNAP_COUNT   = SNAP_HEIGHTS.length;       // 3
-        let snapIndex = 1;
+        let snapIndex  = 1;   // start at mid
+        let snapOffsets = [0, 0, 0]; // translateY px for each snap (computed)
 
-        // translateY offsets (computed from DOM) for each snap level.
-        // At each snap level, the panel sits at its natural SNAP_HEIGHTS[i] height
-        // and we use translateY(0). To show/hide content we actually resize
-        // the panel height — that way the collapsible scrolls correctly.
-        // All snaps use translateY(0); the "minimized peek" snap instead
-        // translates the panel down so only the header strip shows.
-        let peekTranslate = 0; // only used for snap 0
-
-        // Fixed heights in px (computed after layout)
-        let snapPx = [0, 0, 0];
-
-        function vhToPx(vh) {
-            return window.innerHeight * (parseFloat(vh) / 100);
-        }
-
-        function computeSnaps() {
-            snapPx = SNAP_HEIGHTS.map(vhToPx);
-        }
-
+        // ── Compute snap offsets ──────────────────────────────────
+        // offset[2] = 0            → full (top of panel near top of screen)
+        // offset[1] = mid          → 40vh exposed from bottom
+        // offset[0] = peek         → only always-visible strip showing
         function alwaysVisibleHeight() {
             const av = panel.querySelector('.panel-always-visible');
-            const dh = handleArea.offsetHeight;
-            return (av ? av.offsetHeight : 110) + dh;
+            return (av ? av.offsetHeight : 110) + handleArea.offsetHeight + 16;
         }
 
-        function applySnap(index, animate) {
-            const prevIndex = snapIndex;
-            snapIndex = index;
-            if (!animate) panel.style.transition = 'none';
-
-            if (index === 0) {
-                // Minimized: keep mid height but translate down to peek
-                panel.style.height = SNAP_HEIGHTS[1];
-                const panelH = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
-                peekTranslate = panelH - alwaysVisibleHeight() + 16;
-                if (peekTranslate < 0) peekTranslate = 0;
-                panel.style.transform = `translateY(${peekTranslate}px)`;
-                panel.style.overflowY = 'hidden';
-                updateCollapsibleMaxHeight(1);
-            } else if (index === 2 && prevIndex === 1 && animate) {
-                // Mid → Full: grow height upward by briefly translating up then settling
-                const fromH = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
-                const toH   = snapPx[2] || vhToPx(SNAP_HEIGHTS[2]);
-                const diff  = toH - fromH;
-                // Start translated down by the difference so top edge stays put,
-                // then animate both height growing and translateY back to 0
-                panel.style.transition = 'none';
-                panel.style.height = toH + 'px';
-                panel.style.transform = `translateY(${diff}px)`;
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        panel.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
-                        panel.style.transform = 'translateY(0)';
-                        panel.style.overflowY = 'hidden';
-                        updateCollapsibleMaxHeight(2);
-                    });
-                });
-            } else if (index === 1 && prevIndex === 2 && animate) {
-                // Full → Mid: shrink height downward
-                const toH  = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
-                const diff = (snapPx[2] || vhToPx(SNAP_HEIGHTS[2])) - toH;
-                panel.style.transition = 'none';
-                panel.style.transform = `translateY(0)`;
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        panel.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
-                        panel.style.height = toH + 'px';
-                        panel.style.transform = `translateY(${diff}px)`;
-                        setTimeout(() => { panel.style.transform = 'translateY(0)'; }, 320);
-                        panel.style.overflowY = 'hidden';
-                        updateCollapsibleMaxHeight(1);
-                    });
-                });
-            } else {
-                panel.style.height = SNAP_HEIGHTS[index];
-                panel.style.transform = 'translateY(0)';
-                panel.style.overflowY = 'hidden';
-                updateCollapsibleMaxHeight(index);
-            }
-
-            if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
+        function computeOffsets() {
+            const panelPx   = window.innerHeight * PANEL_VH / 100;
+            const midExpose = window.innerHeight * 40 / 100; // 40vh exposed at mid
+            snapOffsets[2] = 0;                                      // full
+            snapOffsets[1] = panelPx - midExpose;                    // mid
+            snapOffsets[0] = panelPx - alwaysVisibleHeight();        // peek
+            if (snapOffsets[0] < snapOffsets[1]) snapOffsets[0] = snapOffsets[1];
         }
 
-        function updateCollapsibleMaxHeight(index) {
+        function updateCollapsible() {
             const collapsible = panel.querySelector('.panel-collapsible');
             if (!collapsible) return;
-            const panelH    = snapPx[index] || vhToPx(SNAP_HEIGHTS[index]);
+            const panelPx   = window.innerHeight * PANEL_VH / 100;
             const reservedH = alwaysVisibleHeight() + 20;
-            const available = Math.max(0, panelH - reservedH);
+            const available = Math.max(0, panelPx - reservedH);
             collapsible.style.height    = available + 'px';
             collapsible.style.maxHeight = available + 'px';
             collapsible.style.overflowY = 'auto';
         }
 
-        // ── Init ────────────────────────────────────────────────
+        function applySnap(index, animate) {
+            snapIndex = Math.max(0, Math.min(SNAP_COUNT - 1, index));
+            if (animate) {
+                panel.style.transition = TRANSITION;
+            } else {
+                panel.style.transition = 'none';
+            }
+            panel.style.transform = `translateY(${snapOffsets[snapIndex]}px)`;
+            updateCollapsible();
+            if (!animate) {
+                requestAnimationFrame(() => { panel.style.transition = ''; });
+            }
+        }
+
+        // ── Init ─────────────────────────────────────────────────
         window.addEventListener('load', () => {
             document.fonts.ready.then(() => {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        computeSnaps();
-                        applySnap(1, false); // start at mid
+                        panel.style.height = PANEL_VH + 'vh';
+                        panel.style.overflowY = 'hidden';
+                        computeOffsets();
+                        updateCollapsible();
+                        applySnap(1, false);
                         panel.style.visibility = 'visible';
                     });
                 });
@@ -511,58 +465,52 @@
 
         window.addEventListener('resize', () => {
             if (!isMobile()) return;
-            computeSnaps();
+            computeOffsets();
             applySnap(snapIndex, false);
         });
 
-        // ── Drag state ──────────────────────────────────────────
-        let dragging      = false;
-        let startY        = 0;
-        let startTranslateY = 0;  // translateY at drag start
-        let startPanelH   = 0;    // panel height at drag start (for snap 0 hybrid)
-        let liveY         = 0;
-        let lastY         = 0;
-        let lastT         = 0;
-        let velocity      = 0;
+        // ── Drag state ───────────────────────────────────────────
+        let dragging       = false;
+        let startY         = 0;
+        let startOffset    = 0; // translateY at drag start
+        let liveOffset     = 0;
+        let lastY          = 0;
+        let lastT          = 0;
+        let velocity       = 0;
 
-        const SWIPE_VEL  = 0.25; // px/ms flick threshold
-        const DRAG_DEAD  = 6;    // px dead zone before drag starts
+        const SWIPE_VEL = 0.25; // px/ms
+        const DEAD_ZONE = 6;    // px before drag activates
 
+        // Handle bar always draggable
         handleArea.addEventListener('touchstart', onStart, { passive: false });
         handleArea.addEventListener('mousedown',  onStart);
 
-        // Drag from minimized peek strip too
+        // Panel body: draggable when minimized, or when content is scrolled to top
         panel.addEventListener('touchstart', (e) => {
-            if (snapIndex !== 0) return;
-            onStart(e);
+            if (handleArea.contains(e.target)) return; // already handled above
+            if (snapIndex === 0) { onStart(e); return; }
+            const collapsible = panel.querySelector('.panel-collapsible');
+            if (!collapsible || collapsible.scrollTop <= 0) onStart(e);
         }, { passive: false });
 
-        // Tap minimized strip to jump to mid — with smooth animation
+        // Tap minimized strip → jump to mid
         panel.addEventListener('click', () => {
-            if (snapIndex === 0) {
-                panel.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
-                applySnap(1, true);
-            }
+            if (!dragging && snapIndex === 0) applySnap(1, true);
         });
-
-        function currentTranslateY() {
-            const t = new WebKitCSSMatrix(getComputedStyle(panel).transform);
-            return t.m42; // translateY
-        }
 
         function onStart(e) {
             if (!isMobile()) return;
             e.stopPropagation();
+            computeOffsets(); // always fresh
 
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            startY           = clientY;
-            startTranslateY  = snapIndex === 0 ? peekTranslate : 0;
-            startPanelH      = parseFloat(panel.style.height) || vhToPx(SNAP_HEIGHTS[snapIndex]);
-            liveY            = clientY;
-            lastY            = clientY;
-            lastT            = Date.now();
-            velocity         = 0;
-            dragging         = false; // will activate after dead zone
+            startY      = clientY;
+            startOffset = snapOffsets[snapIndex];
+            liveOffset  = startOffset;
+            lastY       = clientY;
+            lastT       = Date.now();
+            velocity    = 0;
+            dragging    = false;
 
             panel.style.transition = 'none';
             handleArea.classList.add('dragging');
@@ -576,93 +524,51 @@
         function onMove(e) {
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            // Activate drag after dead zone
             if (!dragging) {
-                if (Math.abs(clientY - startY) < DRAG_DEAD) return;
+                if (Math.abs(clientY - startY) < DEAD_ZONE) return;
                 dragging = true;
             }
 
             e.preventDefault();
 
             const now = Date.now();
-            const dt  = Math.max(1, now - lastT);
-            velocity  = (clientY - lastY) / dt;
+            velocity  = (clientY - lastY) / Math.max(1, now - lastT);
             lastY     = clientY;
             lastT     = now;
-            liveY     = clientY;
 
-            const delta = clientY - startY; // positive = dragged down
-
-            // We translate in the direction of drag, clamped to valid range.
-            // Full-open = translateY(0), minimized-peek = translateY(peekTranslate)
-            // We compute peekTranslate live so it works during drag too.
-            const panelH = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
-            peekTranslate = panelH - alwaysVisibleHeight();
-
-            // Raw translateY: start + drag delta, clamped [0, peekTranslate]
-            let rawTranslate = startTranslateY + delta;
-            rawTranslate = Math.max(0, Math.min(peekTranslate, rawTranslate));
-
-            // For snaps 1 and 2 we also stretch/shrink the panel height
-            if (snapIndex !== 0) {
-                // When dragging up from mid, grow height toward full
-                // When dragging down from mid, translate (shrink toward peek)
-                const newH = Math.max(
-                    snapPx[0] || vhToPx(SNAP_HEIGHTS[0]),
-                    Math.min(snapPx[2] || vhToPx(SNAP_HEIGHTS[2]), startPanelH - delta)
-                );
-                panel.style.height = newH + 'px';
-                panel.style.transform = delta > 0
-                    ? `translateY(${Math.max(0, rawTranslate)}px)`
-                    : 'translateY(0)';
-            } else {
-                panel.style.transform = `translateY(${rawTranslate}px)`;
-            }
+            // Clamp between full (offset[2]=0) and peek (offset[0])
+            liveOffset = Math.max(snapOffsets[2], Math.min(snapOffsets[0], startOffset + (clientY - startY)));
+            panel.style.transform = `translateY(${liveOffset}px)`;
         }
 
         function onEnd() {
-            if (!dragging) {
-                // Was a tap, not a drag — cleanup but don't snap
-                cleanup();
-                return;
-            }
-            cleanup();
-
-            panel.style.transition = ''; // re-enable CSS snap animation
-
-            const delta = liveY - startY; // positive = dragged down (closing)
-
-            // Determine snap target based on velocity + distance
-            if (velocity > SWIPE_VEL) {
-                // Fast flick downward → go one snap lower
-                applySnap(Math.max(0, snapIndex - 1), true);
-            } else if (velocity < -SWIPE_VEL) {
-                // Fast flick upward → go one snap higher
-                applySnap(Math.min(SNAP_COUNT - 1, snapIndex + 1), true);
-            } else {
-                // Slow drag — pick nearest snap by distance
-                const currentH = parseFloat(panel.style.height) || vhToPx(SNAP_HEIGHTS[snapIndex]);
-                let nearest = snapIndex;
-                let minDist = Infinity;
-                snapPx.forEach((h, i) => {
-                    const dist = Math.abs(currentH - h);
-                    if (dist < minDist) { minDist = dist; nearest = i; }
-                });
-                applySnap(nearest, true);
-            }
-        }
-
-        function cleanup() {
-            dragging = false;
             handleArea.classList.remove('dragging');
             document.removeEventListener('touchmove', onMove);
             document.removeEventListener('touchend',  onEnd);
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup',   onEnd);
+
+            if (!dragging) { dragging = false; return; }
+            dragging = false;
+
+            // Pick snap target: flick → one step, slow drag → nearest
+            let target = snapIndex;
+            if (velocity > SWIPE_VEL) {
+                target = Math.max(0, snapIndex - 1);             // flick down
+            } else if (velocity < -SWIPE_VEL) {
+                target = Math.min(SNAP_COUNT - 1, snapIndex + 1); // flick up
+            } else {
+                // nearest snap by current translateY position
+                let minDist = Infinity;
+                snapOffsets.forEach((offset, i) => {
+                    const dist = Math.abs(liveOffset - offset);
+                    if (dist < minDist) { minDist = dist; target = i; }
+                });
+            }
+            applySnap(target, true);
         }
 
-        // Expose for updateMap to call after data loads
-        window._recomputeSnaps = () => { computeSnaps(); applySnap(snapIndex, false); };
+        window._recomputeSnaps = () => { computeOffsets(); applySnap(snapIndex, false); };
 
     })();
 
