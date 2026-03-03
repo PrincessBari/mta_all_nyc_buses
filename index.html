@@ -488,9 +488,12 @@
         function updateCollapsibleMaxHeight(index) {
             const collapsible = panel.querySelector('.panel-collapsible');
             if (!collapsible) return;
-            const panelH = snapPx[index] || vhToPx(SNAP_HEIGHTS[index]);
-            const reservedH = alwaysVisibleHeight() + 20; // 20px bottom padding
-            collapsible.style.maxHeight = Math.max(0, panelH - reservedH) + 'px';
+            const panelH    = snapPx[index] || vhToPx(SNAP_HEIGHTS[index]);
+            const reservedH = alwaysVisibleHeight() + 20;
+            const available = Math.max(0, panelH - reservedH);
+            collapsible.style.height    = available + 'px';
+            collapsible.style.maxHeight = available + 'px';
+            collapsible.style.overflowY = 'auto';
         }
 
         // ── Init ────────────────────────────────────────────────
