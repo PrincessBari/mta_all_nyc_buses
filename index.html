@@ -397,10 +397,9 @@
 
         // ── Snap levels ──────────────────────────────────────────
         // SNAP_HEIGHTS: CSS height of the panel at each snap level
-        // SNAP_LABELS:  human-readable names for debugging
-        const SNAP_HEIGHTS = ['40vh', '60vh', '88vh'];
-        const SNAP_COUNT   = SNAP_HEIGHTS.length;       // 3
         // snap index: 0 = minimized peek, 1 = mid (default), 2 = full
+        const SNAP_HEIGHTS = ['40vh', '40vh', '88vh'];
+        const SNAP_COUNT   = SNAP_HEIGHTS.length;       // 3
         let snapIndex = 1;
 
         // translateY offsets (computed from DOM) for each snap level.
@@ -425,7 +424,8 @@
         function alwaysVisibleHeight() {
             const av = panel.querySelector('.panel-always-visible');
             const dh = handleArea.offsetHeight;
-            return (av ? av.offsetHeight : 110) + dh;
+            // Extra 16px to ensure the gray box / collapsible top margin is hidden
+            return (av ? av.offsetHeight : 110) + dh + 16;
         }
 
         function applySnap(index, animate) {
@@ -500,9 +500,12 @@
             onStart(e);
         }, { passive: false });
 
-        // Tap minimized strip to jump to mid
+        // Tap minimized strip to jump to mid — with smooth animation
         panel.addEventListener('click', () => {
-            if (snapIndex === 0) applySnap(1, true);
+            if (snapIndex === 0) {
+                panel.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
+                applySnap(1, true);
+            }
         });
 
         function currentTranslateY() {
