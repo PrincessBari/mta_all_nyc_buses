@@ -841,6 +841,11 @@
                         entry.el.style.backgroundColor = color;
                         entry.busData = bus;
 
+                        // Auto-refresh detail panel if this bus is currently selected
+                        if (selectedRoute === bus.route) {
+                            showBusDetail(bus, color);
+                        }
+
                     } else {
                         const el = createBusElement(color, routeDisplay);
                         el._route = bus.route;
