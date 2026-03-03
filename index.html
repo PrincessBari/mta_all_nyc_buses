@@ -259,7 +259,7 @@
                 overflow-y: hidden;
                 overflow-x: hidden;
 
-                transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
                 transform: translateY(0);
                 will-change: transform;
                 visibility: hidden;
@@ -424,11 +424,11 @@
         function alwaysVisibleHeight() {
             const av = panel.querySelector('.panel-always-visible');
             const dh = handleArea.offsetHeight;
-            // Extra 16px to ensure the gray box / collapsible top margin is hidden
-            return (av ? av.offsetHeight : 110) + dh + 16;
+            return (av ? av.offsetHeight : 110) + dh;
         }
 
         function applySnap(index, animate) {
+            const prevIndex = snapIndex;
             snapIndex = index;
             if (!animate) panel.style.transition = 'none';
 
@@ -436,11 +436,45 @@
                 // Minimized: keep mid height but translate down to peek
                 panel.style.height = SNAP_HEIGHTS[1];
                 const panelH = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
-                peekTranslate = panelH - alwaysVisibleHeight();
+                peekTranslate = panelH - alwaysVisibleHeight() + 16;
                 if (peekTranslate < 0) peekTranslate = 0;
                 panel.style.transform = `translateY(${peekTranslate}px)`;
                 panel.style.overflowY = 'hidden';
-                updateCollapsibleMaxHeight(1); // keeps scroll area sized for mid
+                updateCollapsibleMaxHeight(1);
+            } else if (index === 2 && prevIndex === 1 && animate) {
+                // Mid → Full: grow height upward by briefly translating up then settling
+                const fromH = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
+                const toH   = snapPx[2] || vhToPx(SNAP_HEIGHTS[2]);
+                const diff  = toH - fromH;
+                // Start translated down by the difference so top edge stays put,
+                // then animate both height growing and translateY back to 0
+                panel.style.transition = 'none';
+                panel.style.height = toH + 'px';
+                panel.style.transform = `translateY(${diff}px)`;
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        panel.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
+                        panel.style.transform = 'translateY(0)';
+                        panel.style.overflowY = 'hidden';
+                        updateCollapsibleMaxHeight(2);
+                    });
+                });
+            } else if (index === 1 && prevIndex === 2 && animate) {
+                // Full → Mid: shrink height downward
+                const toH  = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
+                const diff = (snapPx[2] || vhToPx(SNAP_HEIGHTS[2])) - toH;
+                panel.style.transition = 'none';
+                panel.style.transform = `translateY(0)`;
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        panel.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
+                        panel.style.height = toH + 'px';
+                        panel.style.transform = `translateY(${diff}px)`;
+                        setTimeout(() => { panel.style.transform = 'translateY(0)'; }, 320);
+                        panel.style.overflowY = 'hidden';
+                        updateCollapsibleMaxHeight(1);
+                    });
+                });
             } else {
                 panel.style.height = SNAP_HEIGHTS[index];
                 panel.style.transform = 'translateY(0)';
