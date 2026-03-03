@@ -839,6 +839,7 @@
                         entry.marker.setLngLat([lng, lat]);
                         entry.lastSeen = now;
                         entry.el.style.backgroundColor = color;
+                        entry.busData = bus;
 
                     } else {
                         const el = createBusElement(color, routeDisplay);
@@ -848,10 +849,13 @@
                             .setLngLat([bus.longitude, bus.latitude])
                             .addTo(map);
 
+                        busMarkers.set(vehicleId, { marker, el, route: bus.route, lastSeen: now, busData: bus });
+
                         el.addEventListener('mouseenter', () => {
+                            const currentBus = busMarkers.get(vehicleId)?.busData || bus;
                             if (!isTouchDevice() && !selectedRoute) {
-                                showBusDetail(bus, color);
-                                showRoute(bus.route, color);
+                                showBusDetail(currentBus, color);
+                                showRoute(currentBus.route, color);
                             }
                         });
 
@@ -862,21 +866,22 @@
                         });
 
                         el.addEventListener('click', (e) => {
+                            const currentBus = busMarkers.get(vehicleId)?.busData || bus;
                             e.stopPropagation();
                             unglowBuses(); // clear any previous glow first
                             el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
                             el.style.border = '2px solid #fbbf24';
                             if (isTouchDevice()) {
-                                showBusDetail(bus, color);
-                                showRoute(bus.route, color);
+                                showBusDetail(currentBus, color);
+                                showRoute(currentBus.route, color);
                             } else {
-                                selectedRoute = bus.route;
-                                showBusDetail(bus, color);
-                                showRoute(bus.route, color);
+                                selectedRoute = currentBus.route;
+                                showBusDetail(currentBus, color);
+                                showRoute(currentBus.route, color);
                             }
                         });
 
-                        busMarkers.set(vehicleId, { marker, el, route: bus.route, lastSeen: now });
+                        
                     }
                 });
 
