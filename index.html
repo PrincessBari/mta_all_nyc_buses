@@ -409,14 +409,10 @@
         // offset[1] = mid          → 40vh exposed from bottom
         // offset[0] = peek         → only always-visible strip showing
         function alwaysVisibleHeight() {
-            // Measure from top of panel to bottom of the hint text ("Tap a bus for details"),
-            // which is the last child of .panel-always-visible, plus a small gap.
-            const av = panel.querySelector('.panel-always-visible');
-            if (av) {
-                const panelTop = panel.getBoundingClientRect().top;
-                const avBottom = av.getBoundingClientRect().bottom;
-                return (avBottom - panelTop) + 12; // 12px gap below hint
-            }
+            // Use the top of .panel-collapsible relative to the panel —
+            // that's exactly where we want to cut off in minimized state.
+            const collapsible = panel.querySelector('.panel-collapsible');
+            if (collapsible) return collapsible.offsetTop;
             return handleArea.offsetHeight + 130;
         }
 
