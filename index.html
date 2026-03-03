@@ -207,7 +207,7 @@
            DRAG HANDLE (mobile)
         ===================== */
         .drag-handle-area {
-            display: none; /* hidden on desktop */
+            display: none;
         }
 
         .drag-handle-bar {
@@ -223,17 +223,11 @@
             background: #9ca3af;
         }
 
-        /* Panel title row visible in both states */
         .panel-title-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 8px;
-        }
-
-        /* Content that hides when minimized */
-        .panel-collapsible {
-            /* no special rules on desktop */
         }
 
         /* =====================
@@ -246,21 +240,18 @@
             }
 
             #map {
-                /* always fills all available space */
                 flex: 1;
                 order: 1;
                 height: 100%;
             }
 
             .info-panel {
-                /* Fixed height bottom sheet — prevents jumping when bus data loads */
                 position: absolute;
                 bottom: 0;
                 left: 0;
                 right: 0;
                 width: 100%;
-                height: 40vh;
-                max-height: none;
+                /* Height is set dynamically by JS per snap level */
                 order: 2;
                 padding: 0 18px 20px 18px;
                 border-radius: 16px 16px 0 0;
@@ -276,14 +267,13 @@
 
             .panel-collapsible {
                 overflow-y: auto;
-                max-height: calc(40vh - 140px);
             }
 
             .drag-handle-area {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                width: calc(100% + 36px);   /* bleed to panel edges */
+                width: calc(100% + 36px);
                 margin: 0 -18px;
                 padding: 8px 0 14px;
                 cursor: grab;
@@ -296,7 +286,6 @@
                 cursor: grabbing;
             }
 
-            /* Title row on mobile: title left, live indicator right */
             .panel-title-row {
                 margin-bottom: 6px;
             }
@@ -305,7 +294,6 @@
                 font-size: 18px;
                 margin-bottom: 0;
             }
-
         }
 
         @keyframes blink {
@@ -316,7 +304,6 @@
             animation: blink 1.2s ease-in-out infinite;
         }
 
-        /* Move Mapbox attribution to upper-left on mobile */
         @media (max-width: 768px) {
             .mapboxgl-ctrl-bottom-left {
                 bottom: auto !important;
@@ -337,18 +324,15 @@
         
         <div class="info-panel panel-expanded" id="info-panel">
 
-            <!-- ① Drag handle (mobile only) -->
             <div class="drag-handle-area" id="drag-handle-area">
                 <div class="drag-handle-bar"></div>
             </div>
 
-            <!-- ② Always-visible header content -->
             <div class="panel-always-visible">
             <div class="panel-title-row">
                 <h1>NYC Live MTA Bus Tracker</h1>
             </div>
 
-            <!-- subtitle, last-updated, and hint always visible -->
             <div class="subtitle">Updates every 45 seconds (Data source: <a href="https://bustime.mta.info/wiki/Developers/Index" target="_blank" rel="noopener noreferrer" style="color: #1e40af;">MTA Bus Time API</a>)</div>
             
             <div class="last-update" style="margin-top: 0; margin-bottom: 0; padding-top: 0; border-top: none;">
@@ -357,11 +341,9 @@
             <div style="font-size: 12px; color: #2563eb; margin-top: 3px; margin-bottom: 0; line-height: 1.3;">
                 Hover or tap on bus on map for details
             </div>
-            </div><!-- end .panel-always-visible -->
+            </div>
 
-            <!-- ③ Collapses when minimized -->
             <div class="panel-collapsible">
-                <!-- Bus detail panel (shown when a bus is selected) -->
                 <div id="bus-detail" style="display: none; margin-top: 12px; margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <div id="bus-detail-route" style="font-size: 18px; font-weight: 600;"></div>
@@ -397,14 +379,14 @@
                     </div>
                     <div id="borough-list"></div>
                 </div>
-            </div><!-- end .panel-collapsible -->
+            </div>
 
-        </div><!-- end .info-panel -->
+        </div>
     </div>
 
     <script>
     // =====================================================
-    //  MOBILE DRAG HANDLE — snap to expanded / minimized
+    //  MOBILE DRAG HANDLE — 3-snap: minimized / mid / full
     // =====================================================
     (function () {
         const isMobile = () => window.innerWidth <= 768;
@@ -413,50 +395,77 @@
         const panel      = document.getElementById('info-panel');
         const handleArea = document.getElementById('drag-handle-area');
 
-        // Panel has a fixed CSS height (52vh). MINIMIZED_TRANSLATE slides it
-        // down so only the always-visible strip peeks above the bottom edge.
-        // We compute it once from the DOM, then it never needs to change
-        // (because the panel height is fixed — not auto).
-        let MINIMIZED_TRANSLATE = 0;
-        let expanded = true;
+        // ── Snap levels ──────────────────────────────────────────
+        // SNAP_HEIGHTS: CSS height of the panel at each snap level
+        // SNAP_LABELS:  human-readable names for debugging
+        const SNAP_HEIGHTS = ['40vh', '60vh', '88vh'];
+        const SNAP_COUNT   = SNAP_HEIGHTS.length;       // 3
+        // snap index: 0 = minimized peek, 1 = mid (default), 2 = full
+        let snapIndex = 1;
 
-        function computeMinimizedTranslate() {
-            const alwaysVisible = panel.querySelector('.panel-always-visible');
-            const handleH   = handleArea.offsetHeight;
-            const visibleH  = alwaysVisible ? alwaysVisible.offsetHeight : 110;
-            const panelH    = panel.offsetHeight;
-            // slide down enough that only handle + always-visible content shows
-            MINIMIZED_TRANSLATE = panelH - handleH - visibleH;
-            if (MINIMIZED_TRANSLATE < 0) MINIMIZED_TRANSLATE = 0;
+        // translateY offsets (computed from DOM) for each snap level.
+        // At each snap level, the panel sits at its natural SNAP_HEIGHTS[i] height
+        // and we use translateY(0). To show/hide content we actually resize
+        // the panel height — that way the collapsible scrolls correctly.
+        // All snaps use translateY(0); the "minimized peek" snap instead
+        // translates the panel down so only the header strip shows.
+        let peekTranslate = 0; // only used for snap 0
+
+        // Fixed heights in px (computed after layout)
+        let snapPx = [0, 0, 0];
+
+        function vhToPx(vh) {
+            return window.innerHeight * (parseFloat(vh) / 100);
         }
 
-        function setExpanded(animate) {
-            expanded = true;
+        function computeSnaps() {
+            snapPx = SNAP_HEIGHTS.map(vhToPx);
+        }
+
+        function alwaysVisibleHeight() {
+            const av = panel.querySelector('.panel-always-visible');
+            const dh = handleArea.offsetHeight;
+            return (av ? av.offsetHeight : 110) + dh;
+        }
+
+        function applySnap(index, animate) {
+            snapIndex = index;
             if (!animate) panel.style.transition = 'none';
-            panel.style.height = '65vh';
-            document.querySelector('.panel-collapsible').style.maxHeight = 'calc(65vh - 140px)';
-            panel.style.transform = 'translateY(0)';
-            panel.style.overflowY = 'hidden';
+
+            if (index === 0) {
+                // Minimized: keep mid height but translate down to peek
+                panel.style.height = SNAP_HEIGHTS[1];
+                const panelH = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
+                peekTranslate = panelH - alwaysVisibleHeight();
+                if (peekTranslate < 0) peekTranslate = 0;
+                panel.style.transform = `translateY(${peekTranslate}px)`;
+                panel.style.overflowY = 'hidden';
+                updateCollapsibleMaxHeight(1); // keeps scroll area sized for mid
+            } else {
+                panel.style.height = SNAP_HEIGHTS[index];
+                panel.style.transform = 'translateY(0)';
+                panel.style.overflowY = 'hidden';
+                updateCollapsibleMaxHeight(index);
+            }
+
             if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
-            setTimeout(() => computeMinimizedTranslate(), 50);
         }
 
-        function setMinimized(animate) {
-            expanded = false;
-            computeMinimizedTranslate();
-            if (!animate) panel.style.transition = 'none';
-            panel.style.transform = `translateY(${MINIMIZED_TRANSLATE}px)`;
-            panel.style.overflowY = 'hidden';
-            if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
+        function updateCollapsibleMaxHeight(index) {
+            const collapsible = panel.querySelector('.panel-collapsible');
+            if (!collapsible) return;
+            const panelH = snapPx[index] || vhToPx(SNAP_HEIGHTS[index]);
+            const reservedH = alwaysVisibleHeight() + 20; // 20px bottom padding
+            collapsible.style.maxHeight = Math.max(0, panelH - reservedH) + 'px';
         }
 
-        // Compute after layout settles
+        // ── Init ────────────────────────────────────────────────
         window.addEventListener('load', () => {
             document.fonts.ready.then(() => {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        computeMinimizedTranslate();
-                        panel.style.height = '40vh';
+                        computeSnaps();
+                        applySnap(1, false); // start at mid
                         panel.style.visibility = 'visible';
                     });
                 });
@@ -464,100 +473,157 @@
         });
 
         window.addEventListener('resize', () => {
-            computeMinimizedTranslate();
-            expanded ? setExpanded(false) : setMinimized(false);
+            if (!isMobile()) return;
+            computeSnaps();
+            applySnap(snapIndex, false);
         });
 
-        // ── Drag state ──
+        // ── Drag state ──────────────────────────────────────────
         let dragging      = false;
         let startY        = 0;
-        let baseTranslate = 0;
-        let liveTranslate = 0;
+        let startTranslateY = 0;  // translateY at drag start
+        let startPanelH   = 0;    // panel height at drag start (for snap 0 hybrid)
+        let liveY         = 0;
         let lastY         = 0;
         let lastT         = 0;
         let velocity      = 0;
 
-        const SWIPE_PX  = 30;   // px to count as a swipe
-        const SWIPE_VEL = 0.2;  // px/ms to count as a flick
+        const SWIPE_VEL  = 0.25; // px/ms flick threshold
+        const DRAG_DEAD  = 6;    // px dead zone before drag starts
 
-        // CRITICAL: passive:false on the handle's touchstart so we can
-        // call preventDefault() on touchmove and block page scroll
         handleArea.addEventListener('touchstart', onStart, { passive: false });
         handleArea.addEventListener('mousedown',  onStart);
 
-        // Also allow dragging up from the minimized strip
+        // Drag from minimized peek strip too
         panel.addEventListener('touchstart', (e) => {
-            if (expanded) return; // let scroll happen when expanded
+            if (snapIndex !== 0) return;
             onStart(e);
         }, { passive: false });
+
+        // Tap minimized strip to jump to mid
+        panel.addEventListener('click', () => {
+            if (snapIndex === 0) applySnap(1, true);
+        });
+
+        function currentTranslateY() {
+            const t = new WebKitCSSMatrix(getComputedStyle(panel).transform);
+            return t.m42; // translateY
+        }
 
         function onStart(e) {
             if (!isMobile()) return;
             e.stopPropagation();
 
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            startY        = clientY;
-            baseTranslate = expanded ? 0 : MINIMIZED_TRANSLATE;
-            liveTranslate = baseTranslate;
-            lastY         = clientY;
-            lastT         = Date.now();
-            velocity      = 0;
-            dragging      = true;
+            startY           = clientY;
+            startTranslateY  = snapIndex === 0 ? peekTranslate : 0;
+            startPanelH      = parseFloat(panel.style.height) || vhToPx(SNAP_HEIGHTS[snapIndex]);
+            liveY            = clientY;
+            lastY            = clientY;
+            lastT            = Date.now();
+            velocity         = 0;
+            dragging         = false; // will activate after dead zone
 
             panel.style.transition = 'none';
             handleArea.classList.add('dragging');
 
             document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('touchend',  onEnd,  { passive: true  });
+            document.addEventListener('touchend',  onEnd,  { passive: true });
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup',   onEnd);
         }
 
         function onMove(e) {
-            if (!dragging) return;
-            e.preventDefault(); // blocks scroll — works because touchstart was non-passive
-
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            const now     = Date.now();
-            const dt      = Math.max(1, now - lastT);
-            velocity      = (clientY - lastY) / dt;
-            lastY         = clientY;
-            lastT         = now;
 
-            let raw = baseTranslate + (clientY - startY);
-            // clamp between fully expanded (0) and fully minimized
-            raw = Math.max(0, Math.min(MINIMIZED_TRANSLATE, raw));
-            liveTranslate = raw;
-            panel.style.transform = `translateY(${raw}px)`;
+            // Activate drag after dead zone
+            if (!dragging) {
+                if (Math.abs(clientY - startY) < DRAG_DEAD) return;
+                dragging = true;
+            }
+
+            e.preventDefault();
+
+            const now = Date.now();
+            const dt  = Math.max(1, now - lastT);
+            velocity  = (clientY - lastY) / dt;
+            lastY     = clientY;
+            lastT     = now;
+            liveY     = clientY;
+
+            const delta = clientY - startY; // positive = dragged down
+
+            // We translate in the direction of drag, clamped to valid range.
+            // Full-open = translateY(0), minimized-peek = translateY(peekTranslate)
+            // We compute peekTranslate live so it works during drag too.
+            const panelH = snapPx[1] || vhToPx(SNAP_HEIGHTS[1]);
+            peekTranslate = panelH - alwaysVisibleHeight();
+
+            // Raw translateY: start + drag delta, clamped [0, peekTranslate]
+            let rawTranslate = startTranslateY + delta;
+            rawTranslate = Math.max(0, Math.min(peekTranslate, rawTranslate));
+
+            // For snaps 1 and 2 we also stretch/shrink the panel height
+            if (snapIndex !== 0) {
+                // When dragging up from mid, grow height toward full
+                // When dragging down from mid, translate (shrink toward peek)
+                const newH = Math.max(
+                    snapPx[0] || vhToPx(SNAP_HEIGHTS[0]),
+                    Math.min(snapPx[2] || vhToPx(SNAP_HEIGHTS[2]), startPanelH - delta)
+                );
+                panel.style.height = newH + 'px';
+                panel.style.transform = delta > 0
+                    ? `translateY(${Math.max(0, rawTranslate)}px)`
+                    : 'translateY(0)';
+            } else {
+                panel.style.transform = `translateY(${rawTranslate}px)`;
+            }
         }
 
         function onEnd() {
-            if (!dragging) return;
+            if (!dragging) {
+                // Was a tap, not a drag — cleanup but don't snap
+                cleanup();
+                return;
+            }
+            cleanup();
+
+            panel.style.transition = ''; // re-enable CSS snap animation
+
+            const delta = liveY - startY; // positive = dragged down (closing)
+
+            // Determine snap target based on velocity + distance
+            if (velocity > SWIPE_VEL) {
+                // Fast flick downward → go one snap lower
+                applySnap(Math.max(0, snapIndex - 1), true);
+            } else if (velocity < -SWIPE_VEL) {
+                // Fast flick upward → go one snap higher
+                applySnap(Math.min(SNAP_COUNT - 1, snapIndex + 1), true);
+            } else {
+                // Slow drag — pick nearest snap by distance
+                const currentH = parseFloat(panel.style.height) || vhToPx(SNAP_HEIGHTS[snapIndex]);
+                let nearest = snapIndex;
+                let minDist = Infinity;
+                snapPx.forEach((h, i) => {
+                    const dist = Math.abs(currentH - h);
+                    if (dist < minDist) { minDist = dist; nearest = i; }
+                });
+                applySnap(nearest, true);
+            }
+        }
+
+        function cleanup() {
             dragging = false;
             handleArea.classList.remove('dragging');
             document.removeEventListener('touchmove', onMove);
             document.removeEventListener('touchend',  onEnd);
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup',   onEnd);
-
-            panel.style.transition = ''; // re-enable CSS transition for snap
-
-            const delta = liveTranslate - baseTranslate;
-
-            if (expanded) {
-                (velocity > SWIPE_VEL || delta > SWIPE_PX) ? setMinimized(true) : setExpanded(true);
-            } else {
-                (velocity < -SWIPE_VEL || delta < -SWIPE_PX) ? setExpanded(true) : setMinimized(true);
-            }
         }
 
-        // Tap the visible strip to re-expand
-        panel.addEventListener('click', () => {
-            if (!expanded) setExpanded(true);
-        });
+        // Expose for updateMap to call after data loads
+        window._recomputeSnaps = () => { computeSnaps(); applySnap(snapIndex, false); };
 
-        // Expose so updateMap can call after locking height
-        window._recomputeMinimized = computeMinimizedTranslate;
     })();
 
     // =====================================================
@@ -755,15 +821,15 @@
         });
     });
 
-        map.on('click', () => {
-            clearBusDetail();
-        });
+    map.on('click', () => {
+        clearBusDetail();
+    });
 
-        document.getElementById('map').addEventListener('mousemove', (e) => {
-            if (!selectedRoute && !e.target.closest('[style*="border-radius: 50%"]')) {
-                hideRoute();
-            }
-        });
+    document.getElementById('map').addEventListener('mousemove', (e) => {
+        if (!selectedRoute && !e.target.closest('[style*="border-radius: 50%"]')) {
+            hideRoute();
+        }
+    });
 
     function toggleBorough(header) {
         const isOpen = header.classList.toggle('open');
@@ -799,7 +865,6 @@
         document.getElementById('bus-detail').style.display = 'none';
         hideRoute();
     }
-
 
     function updateMap() {
         const fetchId = ++currentFetchId;
@@ -838,7 +903,6 @@
                         entry.el.style.backgroundColor = color;
                         entry.busData = bus;
 
-                        // Auto-refresh detail panel if this bus is currently selected
                         if (selectedVehicleId === vehicleId) {
                             showBusDetail(bus, color);
                         }
@@ -870,7 +934,7 @@
                         el.addEventListener('click', (e) => {
                             const currentBus = busMarkers.get(vehicleId)?.busData || bus;
                             e.stopPropagation();
-                            unglowBuses(); // clear any previous glow first
+                            unglowBuses();
                             el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
                             el.style.border = '2px solid #fbbf24';
                             if (isTouchDevice()) {
@@ -884,8 +948,6 @@
                                 showRoute(currentBus.route, color);
                             }
                         });
-
-                        
                     }
                 });
 
@@ -961,6 +1023,8 @@
                 el.classList.remove('loading');
                 el.textContent = new Date().toLocaleTimeString();
 
+                // Re-sync panel dimensions in case content changed height
+                if (window._recomputeSnaps) window._recomputeSnaps();
             })
             .catch(error => {
                 console.error(`Fetch #${fetchId} failed — keeping existing markers:`, error);
