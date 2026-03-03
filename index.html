@@ -600,6 +600,7 @@
     let currentFetchId = 0;
     let lastCompletedFetchId = 0;
     let selectedRoute = null;
+    let selectedVehicleId = null;
     const isTouchDevice = () => navigator.maxTouchPoints > 0;
 
     window.addEventListener('load', () => {
@@ -798,6 +799,7 @@
 
     function clearBusDetail() {
         selectedRoute = null;
+        selectedVehicleId = null;
         unglowBuses();
         document.getElementById('bus-detail').style.display = 'none';
         hideRoute();
@@ -842,7 +844,7 @@
                         entry.busData = bus;
 
                         // Auto-refresh detail panel if this bus is currently selected
-                        if (selectedRoute === bus.route) {
+                        if (selectedVehicleId === vehicleId) {
                             showBusDetail(bus, color);
                         }
 
@@ -877,10 +879,12 @@
                             el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
                             el.style.border = '2px solid #fbbf24';
                             if (isTouchDevice()) {
+                                selectedVehicleId = vehicleId;
                                 showBusDetail(currentBus, color);
                                 showRoute(currentBus.route, color);
                             } else {
                                 selectedRoute = currentBus.route;
+                                selectedVehicleId = vehicleId; 
                                 showBusDetail(currentBus, color);
                                 showRoute(currentBus.route, color);
                             }
