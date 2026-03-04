@@ -189,133 +189,46 @@
             outline: none !important;
         }
 
-        .mapboxgl-popup-tip {
-            border: none !important;
-        }
+        .mapboxgl-popup-tip { border: none !important; }
+        .mapboxgl-popup { border: none !important; }
+        .mapboxgl-popup-close-button { font-size: 18px; padding: 6px 10px; color: #6b7280; }
 
-        .mapboxgl-popup {
-            border: none !important;
-        }
+        /* Bus marker dimming */
+        .bus-dim { opacity: 0.2; transition: opacity 0.2s ease; }
 
-        .mapboxgl-popup-close-button {
-            font-size: 18px;
-            padding: 6px 10px;
-            color: #6b7280;
-        }
-
-        /* =====================
-           DRAG HANDLE (mobile)
-        ===================== */
-        .drag-handle-area {
-            display: none;
-        }
-
-        .drag-handle-bar {
-            width: 40px;
-            height: 4px;
-            background: #d1d5db;
-            border-radius: 2px;
-            transition: background 0.2s;
-        }
-
+        .drag-handle-area { display: none; }
+        .drag-handle-bar { width: 40px; height: 4px; background: #d1d5db; border-radius: 2px; transition: background 0.2s; }
         .drag-handle-area:active .drag-handle-bar,
-        .drag-handle-area.dragging .drag-handle-bar {
-            background: #9ca3af;
-        }
+        .drag-handle-area.dragging .drag-handle-bar { background: #9ca3af; }
+        .panel-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 
-        .panel-title-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-
-        /* =====================
-           MOBILE LAYOUT
-        ===================== */
         @media (max-width: 768px) {
-            #container {
-                flex-direction: column;
-                position: relative;
-            }
-
-            #map {
-                flex: 1;
-                order: 1;
-                height: 100%;
-            }
-
+            #container { flex-direction: column; position: relative; }
+            #map { flex: 1; order: 1; height: 100%; }
             .info-panel {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                width: 100%;
-                /* Height is set dynamically by JS per snap level */
-                order: 2;
-                padding: 0 18px 20px 18px;
+                position: absolute; bottom: 0; left: 0; right: 0; width: 100%;
+                order: 2; padding: 0 18px 20px 18px;
                 border-radius: 16px 16px 0 0;
                 box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
-                overflow-y: hidden;
-                overflow-x: hidden;
-
-                transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-                transform: translateY(0);
-                will-change: transform;
-                visibility: hidden;
+                overflow-y: hidden; overflow-x: hidden;
+                transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateY(0); will-change: transform; visibility: hidden;
             }
-
-            .panel-collapsible {
-                overflow-y: auto;
-            }
-
+            .panel-collapsible { overflow-y: auto; }
             .drag-handle-area {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: calc(100% + 36px);
-                margin: 0 -18px;
-                padding: 8px 0 14px;
-                cursor: grab;
-                touch-action: none;
-                user-select: none;
-                -webkit-user-select: none;
+                display: flex; align-items: center; justify-content: center;
+                width: calc(100% + 36px); margin: 0 -18px; padding: 8px 0 14px;
+                cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
             }
-
-            .drag-handle-area:active {
-                cursor: grabbing;
-            }
-
-            .panel-title-row {
-                margin-bottom: 6px;
-            }
-
-            .info-panel h1 {
-                font-size: 18px;
-                margin-bottom: 0;
-            }
+            .drag-handle-area:active { cursor: grabbing; }
+            .panel-title-row { margin-bottom: 6px; }
+            .info-panel h1 { font-size: 18px; margin-bottom: 0; }
+            .mapboxgl-ctrl-bottom-left { bottom: auto !important; top: 8px !important; left: 3px !important; }
+            .mapboxgl-ctrl-bottom-right { bottom: auto !important; top: -2px !important; right: -2px !important; }
         }
 
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-        #last-update.loading {
-            animation: blink 1.2s ease-in-out infinite;
-        }
-
-        @media (max-width: 768px) {
-            .mapboxgl-ctrl-bottom-left {
-                bottom: auto !important;
-                top: 8px !important;
-                left: 3px !important;
-            }
-            .mapboxgl-ctrl-bottom-right {
-                bottom: auto !important;
-                top: -2px !important;
-                right: -2px !important;
-            }
-        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        #last-update.loading { animation: blink 1.2s ease-in-out infinite; }
     </style>
 </head>
 <body>
@@ -323,24 +236,21 @@
         <div id="map"></div>
         
         <div class="info-panel panel-expanded" id="info-panel">
-
             <div class="drag-handle-area" id="drag-handle-area">
                 <div class="drag-handle-bar"></div>
             </div>
 
             <div class="panel-always-visible">
-            <div class="panel-title-row">
-                <h1>NYC Live MTA Bus Tracker</h1>
-            </div>
-
-            <div class="subtitle">Updates every 45 seconds (Data source: <a href="https://bustime.mta.info/wiki/Developers/Index" target="_blank" rel="noopener noreferrer" style="color: #1e40af;">MTA Bus Time API</a>)</div>
-            
-            <div class="last-update" style="margin-top: 0; margin-bottom: 0; padding-top: 0; border-top: none;">
-                Last updated: <strong id="last-update">Initial load takes up to 45 seconds...</strong>
-            </div>
-            <div style="font-size: 12px; color: #2563eb; margin-top: 3px; margin-bottom: 0; line-height: 1.3;">
-                Hover or tap on bus on map for details
-            </div>
+                <div class="panel-title-row">
+                    <h1>NYC Live MTA Bus Tracker</h1>
+                </div>
+                <div class="subtitle">Updates every 45 seconds (Data source: <a href="https://bustime.mta.info/wiki/Developers/Index" target="_blank" rel="noopener noreferrer" style="color: #1e40af;">MTA Bus Time API</a>)</div>
+                <div class="last-update" style="margin-top: 0; margin-bottom: 0; padding-top: 0; border-top: none;">
+                    Last updated: <strong id="last-update">Initial load takes up to 45 seconds...</strong>
+                </div>
+                <div style="font-size: 12px; color: #2563eb; margin-top: 3px; margin-bottom: 0; line-height: 1.3;">
+                    Hover or tap on bus on map for details
+                </div>
             </div>
 
             <div class="panel-collapsible">
@@ -380,16 +290,12 @@
                     <div id="borough-list"></div>
                 </div>
             </div>
-
         </div>
     </div>
 
     <script>
     // =====================================================
     //  MOBILE DRAG HANDLE — 3-snap, pure translateY
-    //  Panel is always 88vh tall. Movement is 100% translateY.
-    //  No height changes during drag — eliminates all jank.
-    //  snap 0 = minimized (peek), snap 1 = mid, snap 2 = full
     // =====================================================
     (function () {
         const isMobile = () => window.innerWidth <= 768;
@@ -397,20 +303,13 @@
 
         const panel      = document.getElementById('info-panel');
         const handleArea = document.getElementById('drag-handle-area');
-        const PANEL_VH   = 88; // panel is always this tall
+        const PANEL_VH   = 88;
         const SNAP_COUNT = 3;
         const TRANSITION = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
 
-        let snapIndex  = 1;   // start at mid
-        let snapOffsets = [0, 0, 0]; // translateY px for each snap (computed)
+        let snapIndex = 1, snapOffsets = [0, 0, 0];
 
-        // ── Compute snap offsets ──────────────────────────────────
-        // offset[2] = 0            → full (top of panel near top of screen)
-        // offset[1] = mid          → 40vh exposed from bottom
-        // offset[0] = peek         → only always-visible strip showing
         function alwaysVisibleHeight() {
-            // Use the top of .panel-collapsible relative to the panel —
-            // that's exactly where we want to cut off in minimized state.
             const collapsible = panel.querySelector('.panel-collapsible');
             if (collapsible) return collapsible.offsetTop;
             return handleArea.offsetHeight + 130;
@@ -419,7 +318,7 @@
         function computeOffsets() {
             const panelPx   = window.innerHeight * PANEL_VH / 100;
             const midExpose = window.innerHeight * 40 / 100;
-            const avh = alwaysVisibleHeight();
+            const avh       = alwaysVisibleHeight();
             snapOffsets[2] = 0;
             snapOffsets[1] = panelPx - midExpose;
             snapOffsets[0] = panelPx - avh + 40;
@@ -439,24 +338,17 @@
 
         function applySnap(index, animate) {
             snapIndex = Math.max(0, Math.min(SNAP_COUNT - 1, index));
-            if (animate) {
-                panel.style.transition = TRANSITION;
-            } else {
-                panel.style.transition = 'none';
-            }
-            panel.style.transform = `translateY(${snapOffsets[snapIndex]}px)`;
+            panel.style.transition = animate ? TRANSITION : 'none';
+            panel.style.transform  = `translateY(${snapOffsets[snapIndex]}px)`;
             updateCollapsible();
-            if (!animate) {
-                requestAnimationFrame(() => { panel.style.transition = ''; });
-            }
+            if (!animate) requestAnimationFrame(() => { panel.style.transition = ''; });
         }
 
-        // ── Init ─────────────────────────────────────────────────
         window.addEventListener('load', () => {
             document.fonts.ready.then(() => {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        panel.style.height = PANEL_VH + 'vh';
+                        panel.style.height    = PANEL_VH + 'vh';
                         panel.style.overflowY = 'hidden';
                         computeOffsets();
                         updateCollapsible();
@@ -473,31 +365,36 @@
             applySnap(snapIndex, false);
         });
 
-        // ── Drag state ───────────────────────────────────────────
-        let dragging       = false;
-        let startY         = 0;
-        let startOffset    = 0; // translateY at drag start
-        let liveOffset     = 0;
-        let lastY          = 0;
-        let lastT          = 0;
-        let velocity       = 0;
+        let dragging = false, startY = 0, startOffset = 0, liveOffset = 0,
+            lastY = 0, lastT = 0, velocity = 0;
+        const SWIPE_VEL = 0.25, DEAD_ZONE = 6;
 
-        const SWIPE_VEL = 0.25; // px/ms
-        const DEAD_ZONE = 6;    // px before drag activates
-
-        // Handle bar always draggable
+        // Handle bar is always draggable
         handleArea.addEventListener('touchstart', onStart, { passive: false });
         handleArea.addEventListener('mousedown',  onStart);
 
-        // Panel body: draggable when minimized, or when content is scrolled to top
+        // Panel body: only drag when minimized, or when scrollable content is at top
+        // AND the touch is not inside the scrollable collapsible area
         panel.addEventListener('touchstart', (e) => {
-            if (handleArea.contains(e.target)) return; // already handled above
-            if (snapIndex === 0) { onStart(e); return; }
+            if (handleArea.contains(e.target)) return;
+
             const collapsible = panel.querySelector('.panel-collapsible');
+
+            // If touch is inside the collapsible, let it scroll — don't drag
+            if (collapsible && collapsible.contains(e.target)) {
+                if (snapIndex === 0) {
+                    // Panel is minimized — treat as drag to expand
+                    onStart(e);
+                }
+                // Otherwise let native scroll handle it
+                return;
+            }
+
+            // Touch is in the always-visible header area
+            if (snapIndex === 0) { onStart(e); return; }
             if (!collapsible || collapsible.scrollTop <= 0) onStart(e);
         }, { passive: false });
 
-        // Tap minimized strip → jump to mid
         panel.addEventListener('click', () => {
             if (!dragging && snapIndex === 0) applySnap(1, true);
         });
@@ -505,20 +402,13 @@
         function onStart(e) {
             if (!isMobile()) return;
             e.stopPropagation();
-            computeOffsets(); // always fresh
-
+            computeOffsets();
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            startY      = clientY;
-            startOffset = snapOffsets[snapIndex];
-            liveOffset  = startOffset;
-            lastY       = clientY;
-            lastT       = Date.now();
-            velocity    = 0;
-            dragging    = false;
-
+            startY = clientY; startOffset = snapOffsets[snapIndex];
+            liveOffset = startOffset; lastY = clientY; lastT = Date.now();
+            velocity = 0; dragging = false;
             panel.style.transition = 'none';
             handleArea.classList.add('dragging');
-
             document.addEventListener('touchmove', onMove, { passive: false });
             document.addEventListener('touchend',  onEnd,  { passive: true });
             document.addEventListener('mousemove', onMove);
@@ -527,20 +417,14 @@
 
         function onMove(e) {
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
             if (!dragging) {
                 if (Math.abs(clientY - startY) < DEAD_ZONE) return;
                 dragging = true;
             }
-
             e.preventDefault();
-
             const now = Date.now();
             velocity  = (clientY - lastY) / Math.max(1, now - lastT);
-            lastY     = clientY;
-            lastT     = now;
-
-            // Clamp between full (offset[2]=0) and peek (offset[0])
+            lastY = clientY; lastT = now;
             liveOffset = Math.max(snapOffsets[2], Math.min(snapOffsets[0], startOffset + (clientY - startY)));
             panel.style.transform = `translateY(${liveOffset}px)`;
         }
@@ -551,18 +435,12 @@
             document.removeEventListener('touchend',  onEnd);
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup',   onEnd);
-
             if (!dragging) { dragging = false; return; }
             dragging = false;
-
-            // Pick snap target: flick → one step, slow drag → nearest
             let target = snapIndex;
-            if (velocity > SWIPE_VEL) {
-                target = Math.max(0, snapIndex - 1);             // flick down
-            } else if (velocity < -SWIPE_VEL) {
-                target = Math.min(SNAP_COUNT - 1, snapIndex + 1); // flick up
-            } else {
-                // nearest snap by current translateY position
+            if      (velocity > SWIPE_VEL)  target = Math.max(0, snapIndex - 1);
+            else if (velocity < -SWIPE_VEL) target = Math.min(SNAP_COUNT - 1, snapIndex + 1);
+            else {
                 let minDist = Infinity;
                 snapOffsets.forEach((offset, i) => {
                     const dist = Math.abs(liveOffset - offset);
@@ -573,7 +451,6 @@
         }
 
         window._recomputeSnaps = () => { computeOffsets(); applySnap(snapIndex, false); };
-
     })();
 
     // =====================================================
@@ -582,62 +459,84 @@
     mapboxgl.accessToken = 'pk.eyJ1IjoiYmlvcGl4aWUiLCJhIjoiY21saGcyMHlsMDhtcjNkb205bTVtcDNraSJ9.QW9C9Oatp3hcGYvWfrD84g';
     
     const boroughColors = {
-        'Manhattan': '#1e40af',
-        'Bronx': '#2563eb',
-        'Queens': '#3b82f6',
-        'Brooklyn': '#60a5fa',
+        'Manhattan':     '#1e40af',
+        'Bronx':         '#2563eb',
+        'Queens':        '#3b82f6',
+        'Brooklyn':      '#60a5fa',
         'Staten Island': '#93c5fd',
-        'Express': '#8b5cf6',
-        'Unknown': '#6b7280'
+        'Express':       '#8b5cf6',
+        'Unknown':       '#6b7280'
     };
     
     const map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/light-v11',
         center: [-73.935242, 40.730610],
-        zoom: 11,
-        pitch: 0,
-        bearing: 0,
-        antialias: true
+        zoom: 11, pitch: 0, bearing: 0, antialias: true
     });
 
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            map.resize();
-            updateMap();
-        }
+        if (document.visibilityState === 'visible') { map.resize(); updateMap(); }
     });
 
     const busMarkers = new Map();
-    const EXPIRY_MS = 5 * 60 * 1000;
-    let currentFetchId = 0;
-    let lastCompletedFetchId = 0;
-    let selectedRoute = null;
-    let selectedVehicleId = null;
+    const EXPIRY_MS  = 5 * 60 * 1000;
+    let currentFetchId = 0, lastCompletedFetchId = 0;
+    let selectedRoute = null, selectedVehicleId = null;
     const isTouchDevice = () => navigator.maxTouchPoints > 0;
 
     window.addEventListener('load', () => {
         const hint = document.querySelector('.panel-always-visible [style*="color: #2563eb"]');
-        if (hint) {
-            hint.textContent = isTouchDevice()
-                ? 'Tap a bus for details'
-                : 'Hover on bus for preview · Click to lock route · Click map or X to dismiss';
-        }
+        if (hint) hint.textContent = isTouchDevice()
+            ? 'Tap a bus for details'
+            : 'Hover on bus for preview · Click to lock route · Click map or X to dismiss';
     });
+
+    // ── Dimming ──────────────────────────────────────────────────
+    function applyDimming(activeRoute, activeVehicleId) {
+        busMarkers.forEach((entry, vid) => {
+            const el      = entry.el;
+            const onRoute = el._route === activeRoute;
+            if (onRoute) {
+                el.classList.remove('bus-dim');
+                if (activeVehicleId && vid === activeVehicleId) {
+                    el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
+                    el.style.border    = '2px solid #fbbf24';
+                } else {
+                    el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
+                    el.style.border    = '1px solid white';
+                }
+            } else {
+                el.classList.add('bus-dim');
+                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
+                el.style.border    = '1px solid white';
+            }
+        });
+    }
+
+    function clearDimming() {
+        busMarkers.forEach(({ el }) => {
+            el.classList.remove('bus-dim');
+            el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
+            el.style.border    = '1px solid white';
+        });
+    }
+    // ─────────────────────────────────────────────────────────────
 
     function glowBuses(route) {
         busMarkers.forEach(({ el }) => {
             if (el._route === route) {
                 el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
-                el.style.border = '2px solid #fbbf24';
+                el.style.border    = '2px solid #fbbf24';
             }
         });
     }
 
     function unglowBuses() {
         busMarkers.forEach(({ el }) => {
+            el.classList.remove('bus-dim');
             el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
-            el.style.border = '1px solid white';
+            el.style.border    = '1px solid white';
         });
     }
 
@@ -645,16 +544,23 @@
         if (!map.getLayer('bus-route-line')) return;
         map.setPaintProperty('bus-route-line', 'line-color', color);
         map.setFilter('bus-route-line', ['==', 'route_id', routeId]);
-
-        if (!map.getLayer('bus-stop-circles') || !map.isSourceLoaded('bus-stops')) return;
-        map.setPaintProperty('bus-stop-circles', 'circle-stroke-color', color);
-        map.setFilter('bus-stop-circles', ['==', 'route_id', routeId]);
+        if (!map.getLayer('bus-stop-circles')) return;
+        if (map.isSourceLoaded('bus-stops')) {
+            map.setPaintProperty('bus-stop-circles', 'circle-stroke-color', color);
+            map.setFilter('bus-stop-circles', ['==', 'route_id', routeId]);
+        } else {
+            map.once('sourcedata', function onSD(e) {
+                if (e.sourceId === 'bus-stops' && map.isSourceLoaded('bus-stops')) {
+                    map.setPaintProperty('bus-stop-circles', 'circle-stroke-color', color);
+                    map.setFilter('bus-stop-circles', ['==', 'route_id', routeId]);
+                } else { map.once('sourcedata', onSD); }
+            });
+        }
     }
 
     function hideRoute() {
         if (!map.getLayer('bus-route-line')) return;
         map.setFilter('bus-route-line', ['==', 'route_id', '']);
-
         if (!map.getLayer('bus-stop-circles') || !map.isSourceLoaded('bus-stops')) return;
         map.setFilter('bus-stop-circles', ['==', 'route_id', '']);
     }
@@ -663,268 +569,201 @@
         fetch('https://raw.githubusercontent.com/PrincessBari/mta_all_nyc_buses/multiline-routes/routes.geojson?v=3')
             .then(r => r.json())
             .then(geojson => {
-                map.addSource('bus-routes', {
-                    type: 'geojson',
-                    data: geojson
-                });
-
+                map.addSource('bus-routes', { type: 'geojson', data: geojson });
                 map.addLayer({
-                    id: 'bus-route-line',
-                    type: 'line',
-                    source: 'bus-routes',
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': ['get', 'color'],
-                        'line-width': 3,
-                        'line-opacity': 0.8
-                    },
+                    id: 'bus-route-line', type: 'line', source: 'bus-routes',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-opacity': 0.8 },
                     filter: ['==', 'route_id', '']
                 });
-
-                console.log('Bus route shapes loaded');
             })
             .catch(err => console.error('Failed to load route shapes:', err));
 
         fetch('https://raw.githubusercontent.com/PrincessBari/mta_all_nyc_buses/refs/heads/add_bus_stops/stops.geojson')
             .then(r => r.json())
             .then(geojson => {
-                map.addSource('bus-stops', {
-                    type: 'geojson',
-                    data: geojson,
-                    tolerance: 0,
-                    buffer: 128
-                });
-
+                map.addSource('bus-stops', { type: 'geojson', data: geojson, tolerance: 0, buffer: 128 });
                 map.addLayer({
-                    id: 'bus-stop-circles',
-                    type: 'circle',
-                    source: 'bus-stops',
+                    id: 'bus-stop-circles', type: 'circle', source: 'bus-stops',
                     paint: {
-                        'circle-radius': 3.5,
-                        'circle-color': '#ffffff',
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': ['get', 'route_color'],
+                        'circle-radius': 3.5, 'circle-color': '#ffffff',
+                        'circle-stroke-width': 2, 'circle-stroke-color': ['get', 'route_color'],
                         'circle-opacity': 0.9
                     },
                     filter: ['==', 'route_id', '']
                 });
-
-                console.log('Bus stops loaded');
             })
             .catch(err => console.error('Failed to load bus stops:', err));
 
-        document.getElementById('last-update').classList.add('loading');    
+        document.getElementById('last-update').classList.add('loading');
         updateMap();
-        function scheduleNext() {
-            setTimeout(() => {
-                updateMap();
-                scheduleNext();
-            }, 45000);
-        }
+        function scheduleNext() { setTimeout(() => { updateMap(); scheduleNext(); }, 45000); }
         scheduleNext();
     });
 
     function createBusElement(color, routeDisplay) {
         const el = document.createElement('div');
         let width;
-        if (routeDisplay.length <= 2) width = '18px';
+        if (routeDisplay.length <= 2)       width = '18px';
         else if (routeDisplay.length === 3) width = '22px';
         else if (routeDisplay.length === 4) width = '26px';
-        else width = '30px';
-        
-        el.style.width = width;
-        el.style.height = '18px';
-        el.style.borderRadius = '50%';
+        else                                width = '30px';
+        el.style.width           = width;
+        el.style.height          = '18px';
+        el.style.borderRadius    = '50%';
         el.style.backgroundColor = color;
-        el.style.border = '1px solid white';
-        el.style.display = 'flex';
-        el.style.alignItems = 'center';
-        el.style.justifyContent = 'center';
-        el.style.color = 'white';
-        el.style.fontSize = routeDisplay.length >= 4 ? '7px' : '9px';
-        el.style.fontWeight = '600';
-        el.style.cursor = 'pointer';
-        el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
-        el.style.fontFamily = "'Inter', sans-serif";
-        el.textContent = routeDisplay;
+        el.style.border          = '1px solid white';
+        el.style.display         = 'flex';
+        el.style.alignItems      = 'center';
+        el.style.justifyContent  = 'center';
+        el.style.color           = 'white';
+        el.style.fontSize        = routeDisplay.length >= 4 ? '7px' : '9px';
+        el.style.fontWeight      = '600';
+        el.style.cursor          = 'pointer';
+        el.style.boxShadow       = '0 1px 2px rgba(0,0,0,0.25)';
+        el.style.fontFamily      = "'Inter', sans-serif";
+        el.textContent           = routeDisplay;
         return el;
     }
 
     map.on('zoom', () => {
-        const zoom = map.getZoom();
-        const baseSize = zoom < 10 ? 12 : (zoom < 12 ? 16 : (zoom < 14 ? 18 : 22));
-        
+        const zoom     = map.getZoom();
+        const baseSize = zoom < 10 ? 12 : zoom < 12 ? 16 : zoom < 14 ? 18 : 22;
         busMarkers.forEach(({ el }) => {
-            const textLength = el.textContent.length;
-            let width;
-            if (textLength <= 2) width = baseSize;
-            else if (textLength === 3) width = baseSize + 4;
-            else if (textLength === 4) width = baseSize + 8;
-            else width = baseSize + 12;
-            
-            el.style.width = width + 'px';
-            el.style.height = baseSize + 'px';
-            el.style.fontSize = (textLength >= 4 ? Math.floor(baseSize * 0.35) : Math.floor(baseSize * 0.5)) + 'px';
+            const tl = el.textContent.length;
+            el.style.width    = (tl <= 2 ? baseSize : tl === 3 ? baseSize + 4 : tl === 4 ? baseSize + 8 : baseSize + 12) + 'px';
+            el.style.height   = baseSize + 'px';
+            el.style.fontSize = (tl >= 4 ? Math.floor(baseSize * 0.35) : Math.floor(baseSize * 0.5)) + 'px';
         });
     });
 
-    map.on('click', () => {
-        clearBusDetail();
+    // Only clear when clicking truly empty map space
+    map.on('click', (e) => {
+        if (!e.originalEvent.target.closest('.mapboxgl-marker')) clearBusDetail();
     });
 
     document.getElementById('map').addEventListener('mousemove', (e) => {
-        if (!selectedRoute && !e.target.closest('[style*="border-radius: 50%"]')) {
-            hideRoute();
-        }
+        if (!selectedRoute && !e.target.closest('[style*="border-radius: 50%"]')) hideRoute();
     });
 
     function toggleBorough(header) {
-        const isOpen = header.classList.toggle('open');
+        const isOpen    = header.classList.toggle('open');
         const routeList = header.nextElementSibling;
-        if (routeList && routeList.classList.contains('route-list')) {
+        if (routeList && routeList.classList.contains('route-list'))
             routeList.classList.toggle('open', isOpen);
-        }
     }
 
     function showBusDetail(bus, color) {
-        document.getElementById('bus-detail-borough').textContent = `Service Route: ${bus.borough}`;
-        document.getElementById('bus-detail-route').textContent = bus.route;
-        document.getElementById('bus-detail-route').style.color = color;
+        document.getElementById('bus-detail-borough').textContent     = `Service Route: ${bus.borough}`;
+        document.getElementById('bus-detail-route').textContent       = bus.route;
+        document.getElementById('bus-detail-route').style.color       = color;
         document.getElementById('bus-detail-destination').textContent = bus.destination;
-        document.getElementById('bus-detail-vehicle').textContent = bus.vehicle_id;
-
+        document.getElementById('bus-detail-vehicle').textContent     = bus.vehicle_id;
         const stopsSection = document.getElementById('bus-detail-stops-section');
-        const stopsList = document.getElementById('bus-detail-stops');
+        const stopsList    = document.getElementById('bus-detail-stops');
         if (bus.next_stops && bus.next_stops.length > 0) {
-            stopsList.innerHTML = bus.next_stops.map(stop => `<li style="margin: 2px 0;">${stop}</li>`).join('');
+            stopsList.innerHTML        = bus.next_stops.map(s => `<li style="margin:2px 0">${s}</li>`).join('');
             stopsSection.style.display = 'block';
         } else {
             stopsSection.style.display = 'none';
         }
-
         document.getElementById('bus-detail').style.display = 'block';
     }
 
     function clearBusDetail() {
-        selectedRoute = null;
-        selectedVehicleId = null;
-        unglowBuses();
+        selectedRoute = null; selectedVehicleId = null;
+        clearDimming();
         document.getElementById('bus-detail').style.display = 'none';
         hideRoute();
     }
 
     function updateMap() {
         const fetchId = ++currentFetchId;
-
         fetch('https://6bzmgql6bejgixjbtk5m2csisi0aaunm.lambda-url.us-east-1.on.aws/')
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (fetchId < lastCompletedFetchId) return;
                 lastCompletedFetchId = fetchId;
 
                 const parsedData = typeof data.body === 'string' ? JSON.parse(data.body) : data;
+                if (!parsedData?.buses?.length) { console.warn('No bus data'); return; }
 
-                if (!parsedData || !parsedData.buses || parsedData.buses.length === 0) {
-                    console.warn('Empty or missing bus data — keeping existing markers on map');
-                    return;
-                }
-
-                const now = Date.now();
-                const buses = parsedData.buses;
+                const now           = Date.now();
+                const buses         = parsedData.buses;
                 const boroughCounts = parsedData.borough_counts || {};
-                const routeCounts = parsedData.route_counts || {};
+                const routeCounts   = parsedData.route_counts   || {};
 
                 buses.forEach(bus => {
                     const lat = parseFloat(bus.latitude);
                     const lng = parseFloat(bus.longitude);
-                    if (!bus.route || !lat || !lng || lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) return;
+                    if (!bus.route || !lat || !lng || isNaN(lat) || isNaN(lng)) return;
 
-                    const vehicleId = bus.vehicle_id;
-                    const color = bus.color || boroughColors[bus.borough] || '#6b7280';
+                    const vehicleId    = bus.vehicle_id;
+                    const color        = bus.color || boroughColors[bus.borough] || '#6b7280';
                     const routeDisplay = String(bus.route).replace('-', '');
 
                     if (busMarkers.has(vehicleId)) {
                         const entry = busMarkers.get(vehicleId);
                         entry.marker.setLngLat([lng, lat]);
                         entry.lastSeen = now;
-                        entry.el.style.backgroundColor = color;
-                        entry.busData = bus;
-
-                        if (selectedVehicleId === vehicleId) {
-                            showBusDetail(bus, color);
+                        // Don't reset color if currently dimmed
+                        if (!entry.el.classList.contains('bus-dim')) {
+                            entry.el.style.backgroundColor = color;
                         }
-
+                        entry.busData = bus;
+                        if (selectedVehicleId === vehicleId) showBusDetail(bus, color);
                     } else {
                         const el = createBusElement(color, routeDisplay);
                         el._route = bus.route;
-                       
+
                         const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-                            .setLngLat([bus.longitude, bus.latitude])
+                            .setLngLat([lng, lat])
                             .addTo(map);
 
                         busMarkers.set(vehicleId, { marker, el, route: bus.route, lastSeen: now, busData: bus });
 
+                        // Dim immediately if a selection is active
+                        if (selectedRoute && el._route !== selectedRoute) el.classList.add('bus-dim');
+
                         el.addEventListener('mouseenter', () => {
-                            const currentBus = busMarkers.get(vehicleId)?.busData || bus;
-                            if (!isTouchDevice() && !selectedRoute) {
-                                showBusDetail(currentBus, color);
-                                showRoute(currentBus.route, color);
-                            }
+                            const cb = busMarkers.get(vehicleId)?.busData || bus;
+                            if (!isTouchDevice() && !selectedRoute) { showBusDetail(cb, color); showRoute(cb.route, color); }
                         });
 
                         el.addEventListener('mouseleave', () => {
-                            if (!isTouchDevice() && !selectedRoute) {
-                                clearBusDetail();
-                            }
+                            if (!isTouchDevice() && !selectedRoute) clearBusDetail();
                         });
 
                         el.addEventListener('click', (e) => {
-                            const currentBus = busMarkers.get(vehicleId)?.busData || bus;
+                            const cb = busMarkers.get(vehicleId)?.busData || bus;
                             e.stopPropagation();
-                            unglowBuses();
-                            el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
-                            el.style.border = '2px solid #fbbf24';
-                            if (isTouchDevice()) {
-                                selectedVehicleId = vehicleId;
-                                showBusDetail(currentBus, color);
-                                showRoute(currentBus.route, color);
-                            } else {
-                                selectedRoute = currentBus.route;
-                                selectedVehicleId = vehicleId; 
-                                showBusDetail(currentBus, color);
-                                showRoute(currentBus.route, color);
-                            }
+                            selectedRoute     = cb.route;
+                            selectedVehicleId = vehicleId;
+                            applyDimming(cb.route, vehicleId);
+                            showBusDetail(cb, color);
+                            showRoute(cb.route, color);
                         });
                     }
                 });
 
-                busMarkers.forEach((entry, vehicleId) => {
-                    if (now - entry.lastSeen > EXPIRY_MS) {
-                        entry.marker.remove();
-                        busMarkers.delete(vehicleId);
-                    }
+                busMarkers.forEach((entry, vid) => {
+                    if (now - entry.lastSeen > EXPIRY_MS) { entry.marker.remove(); busMarkers.delete(vid); }
                 });
 
                 document.getElementById('bus-count').textContent = busMarkers.size;
-
                 const uniqueRoutes = new Set();
-                Object.keys(routeCounts).forEach(key => uniqueRoutes.add(key.split(':')[1]));
+                Object.keys(routeCounts).forEach(k => uniqueRoutes.add(k.split(':')[1]));
                 document.getElementById('route-count').textContent = uniqueRoutes.size;
 
-                const boroughList = document.getElementById('borough-list');
+                const boroughList  = document.getElementById('borough-list');
                 const boroughOrder = ['Manhattan', 'Bronx', 'Queens', 'Brooklyn', 'Staten Island', 'Express'];
-
                 const openBoroughs = new Set(
-                    [...document.querySelectorAll('.borough-header.open')]
-                        .map(el => el.dataset.borough)
+                    [...document.querySelectorAll('.borough-header.open')].map(el => el.dataset.borough)
                 );
 
                 boroughList.innerHTML = boroughOrder.map(borough => {
-                    const count = boroughCounts[borough] || 0;
-                    const color = boroughColors[borough];
+                    const count  = boroughCounts[borough] || 0;
+                    const color  = boroughColors[borough];
                     const isOpen = openBoroughs.has(borough);
 
                     const boroughRoutes = {};
@@ -937,9 +776,7 @@
                         .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
                         .map(([route, rCount]) => {
                             let routeColor = '#6b7280';
-                            busMarkers.forEach(entry => {
-                                if (entry.route === route) routeColor = entry.el.style.backgroundColor;
-                            });
+                            busMarkers.forEach(entry => { if (entry.route === route) routeColor = entry.el.style.backgroundColor; });
                             return `
                             <div class="route-item"
                                 onmouseenter="glowBuses('${route}'); showRoute('${route}', '${routeColor}')"
@@ -952,8 +789,7 @@
                     return `
                         <div style="margin-bottom: 6px;">
                             <div class="borough-header ${count > 0 ? 'clickable' : ''} ${isOpen ? 'open' : ''}"
-                                 data-borough="${borough}"
-                                 onclick="toggleBorough(this)"
+                                 data-borough="${borough}" onclick="toggleBorough(this)"
                                  style="cursor: ${count > 0 ? 'pointer' : 'default'}">
                                 <div class="borough-name">
                                     <div class="borough-dot" style="background-color: ${color}"></div>
@@ -965,20 +801,14 @@
                                 </div>
                             </div>
                             ${count > 0 ? `<div class="route-list ${isOpen ? 'open' : ''}">${routeHTML}</div>` : ''}
-                        </div>
-                    `;
+                        </div>`;
                 }).join('');
 
-                const el = document.getElementById('last-update');
-                el.classList.remove('loading');
-                el.textContent = new Date().toLocaleTimeString();
-
-                // Re-sync panel dimensions in case content changed height
+                document.getElementById('last-update').classList.remove('loading');
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
                 if (window._recomputeSnaps) window._recomputeSnaps();
             })
-            .catch(error => {
-                console.error(`Fetch #${fetchId} failed — keeping existing markers:`, error);
-            });
+            .catch(err => console.error(`Fetch #${fetchId} failed:`, err));
     }
     </script>
 </body>
