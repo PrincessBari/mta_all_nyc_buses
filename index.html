@@ -322,8 +322,6 @@
     <div id="container">
         <div id="map"></div>
         
-        <div id="debug-overlay" style="position:fixed;top:8px;left:8px;z-index:9999;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;padding:8px 10px;border-radius:6px;line-height:1.6;pointer-events:none;"></div>
-        
         <div class="info-panel panel-expanded" id="info-panel">
 
             <div class="drag-handle-area" id="drag-handle-area">
@@ -426,16 +424,6 @@
             snapOffsets[1] = panelPx - midExpose;
             snapOffsets[0] = panelPx - avh + 40;
             if (snapOffsets[0] < snapOffsets[1]) snapOffsets[0] = snapOffsets[1];
-
-            const collapsible = panel.querySelector('.panel-collapsible');
-            const dbg = document.getElementById('debug-overlay');
-            if (dbg) dbg.innerHTML =
-                `panelPx: ${Math.round(panelPx)}<br>` +
-                `avh: ${Math.round(avh)}<br>` +
-                `snap[0] peek: ${Math.round(snapOffsets[0])}<br>` +
-                `snap[1] mid: ${Math.round(snapOffsets[1])}<br>` +
-                `snap[2] full: ${snapOffsets[2]}<br>` +
-                `collapsible.offsetTop: ${collapsible ? collapsible.offsetTop : 'n/a'}`;
         }
 
         function updateCollapsible() {
