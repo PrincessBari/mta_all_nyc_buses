@@ -951,7 +951,7 @@
                             });
                             return `
                             <div class="route-item"
-                                onmouseenter="unglowBuses(); glowBuses('${route}'); showRoute('${route}', '${routeColor}')"
+                                onmouseenter="if (!selectedRoute) { unglowBuses(); glowBuses('${route}'); showRoute('${route}', '${routeColor}'); }"
                                 onmouseleave="if (!selectedRoute) { unglowBuses(); hideRoute(); }"
                                 onclick="unglowBuses(); glowBuses('${route}'); selectedRoute='${route}'; selectedVehicleId=null; showRoute('${route}', '${routeColor}')">
                                 <span>${route}</span>
