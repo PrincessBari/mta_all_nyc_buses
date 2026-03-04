@@ -139,7 +139,7 @@
         }
 
         .route-list.open {
-            max-height: 2000px;
+            max-height: 5000px;
             transition: max-height 0.35s ease-in;
         }
         
@@ -625,43 +625,21 @@
         }
     });
 
-    const DIM_OPACITY  = '0.2';
-    const FULL_OPACITY = '1';
-    const DIM_TRANSITION = 'opacity 0.2s ease, box-shadow 0.2s ease';
-
-    function applyDimming(route, vehicleId) {
-        busMarkers.forEach((entry, vid) => {
-            const el       = entry.el;
-            const onRoute  = el._route === route;
-            const isSelected = vehicleId ? vid === vehicleId : onRoute;
-            el.style.transition = DIM_TRANSITION;
-            if (isSelected) {
-                el.style.opacity   = FULL_OPACITY;
+    function glowBuses(route) {
+        busMarkers.forEach(({ el }) => {
+            if (el._route === route) {
                 el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
-                el.style.border    = '2px solid #fbbf24';
-            } else if (onRoute && !vehicleId) {
-                el.style.opacity   = FULL_OPACITY;
-                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
-                el.style.border    = '1px solid white';
-            } else {
-                el.style.opacity   = DIM_OPACITY;
-                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
-                el.style.border    = '1px solid white';
+                el.style.border = '2px solid #fbbf24';
             }
         });
     }
 
-    function clearDimming() {
+    function unglowBuses() {
         busMarkers.forEach(({ el }) => {
-            el.style.transition = DIM_TRANSITION;
-            el.style.opacity    = FULL_OPACITY;
-            el.style.boxShadow  = '0 1px 2px rgba(0,0,0,0.25)';
-            el.style.border     = '1px solid white';
+            el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)';
+            el.style.border = '1px solid white';
         });
     }
-
-    function glowBuses(route) { applyDimming(route, null); }
-    function unglowBuses()    { clearDimming(); }
 
     function showRoute(routeId, color) {
         if (!map.getLayer('bus-route-line')) return;
@@ -831,9 +809,9 @@
     }
 
     function clearBusDetail() {
-        selectedRoute     = null;
+        selectedRoute = null;
         selectedVehicleId = null;
-        clearDimming();
+        unglowBuses();
         document.getElementById('bus-detail').style.display = 'none';
         hideRoute();
     }
@@ -889,16 +867,6 @@
 
                         busMarkers.set(vehicleId, { marker, el, route: bus.route, lastSeen: now, busData: bus });
 
-                        // If a selection is already active, apply dimming to new markers immediately
-                        if (selectedRoute) {
-                            el.style.transition = DIM_TRANSITION;
-                            if (selectedVehicleId) {
-                                el.style.opacity = vehicleId === selectedVehicleId ? FULL_OPACITY : DIM_OPACITY;
-                            } else {
-                                el.style.opacity = el._route === selectedRoute ? FULL_OPACITY : DIM_OPACITY;
-                            }
-                        }
-
                         el.addEventListener('mouseenter', () => {
                             const currentBus = busMarkers.get(vehicleId)?.busData || bus;
                             if (!isTouchDevice() && !selectedRoute) {
@@ -916,15 +884,16 @@
                         el.addEventListener('click', (e) => {
                             const currentBus = busMarkers.get(vehicleId)?.busData || bus;
                             e.stopPropagation();
+                            unglowBuses();
+                            el.style.boxShadow = '0 0 12px 3px rgba(251, 191, 36, 0.9)';
+                            el.style.border = '2px solid #fbbf24';
                             if (isTouchDevice()) {
                                 selectedVehicleId = vehicleId;
-                                applyDimming(currentBus.route, vehicleId);
                                 showBusDetail(currentBus, color);
                                 showRoute(currentBus.route, color);
                             } else {
-                                selectedRoute     = currentBus.route;
-                                selectedVehicleId = vehicleId;
-                                applyDimming(currentBus.route, vehicleId);
+                                selectedRoute = currentBus.route;
+                                selectedVehicleId = vehicleId; 
                                 showBusDetail(currentBus, color);
                                 showRoute(currentBus.route, color);
                             }
