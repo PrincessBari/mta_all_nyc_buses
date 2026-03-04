@@ -952,7 +952,8 @@
                             return `
                             <div class="route-item"
                                 onmouseenter="glowBuses('${route}'); showRoute('${route}', '${routeColor}')"
-                                onmouseleave="unglowBuses(); hideRoute()">
+                                onmouseleave="if (!selectedRoute) { unglowBuses(); hideRoute(); }"
+                                onclick="selectedRoute='${route}'; selectedVehicleId=null; showRoute('${route}', '${routeColor}')">
                                 <span>${route}</span>
                                 <span style="color:#aaa">${rCount}</span>
                             </div>`;
