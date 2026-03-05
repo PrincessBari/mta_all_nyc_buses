@@ -197,8 +197,8 @@
     let snapOffsets = [0, 0, 0];
 
     function alwaysVisibleHeight() {
-        const collapsible = panel.querySelector('.panel-collapsible');
-        if (collapsible) return collapsible.offsetTop;
+        const alwaysVisible = panel.querySelector('.panel-always-visible');
+        if (alwaysVisible) return handleArea.offsetHeight + alwaysVisible.offsetHeight;
         return handleArea.offsetHeight + 130;
     }
 
