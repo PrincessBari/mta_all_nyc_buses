@@ -245,7 +245,7 @@
                     panel.style.visibility = 'visible';
                 });
             });
-        }, 1000);
+        }, 100);
     });
 
     window.addEventListener('resize', () => {
@@ -271,6 +271,7 @@
     panel.addEventListener('click', () => { if (!dragging && snapIndex === 0) applySnap(1, true); });
 
     function onStart(e) {
+        map.dragging.disable();
         if (!isMobile()) return;
         e.stopPropagation();
         computeOffsets();
@@ -297,6 +298,7 @@
     }
 
     function onEnd() {
+        map.dragging.enable();
         handleArea.classList.remove('dragging');
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend',  onEnd);
