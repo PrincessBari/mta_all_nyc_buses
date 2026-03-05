@@ -695,7 +695,7 @@ function updateMap() {
             el.classList.remove('loading');
             el.textContent = new Date().toLocaleTimeString();
 
-            if (window._recomputeSnaps) window._recomputeSnaps();
+            // if (window._recomputeSnaps) window._recomputeSnaps();
         })
         .catch(err => console.error(`Fetch #${fetchId} failed:`, err));
 }
