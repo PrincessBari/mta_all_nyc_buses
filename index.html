@@ -232,7 +232,7 @@
     }
 
     window.addEventListener('load', () => {
-        document.fonts.ready.then(() => {
+        setTimeout(() => {
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     panel.style.height = PANEL_VH + 'vh';
@@ -243,7 +243,7 @@
                     panel.style.visibility = 'visible';
                 });
             });
-        });
+        }, 300);
     });
 
     window.addEventListener('resize', () => {
