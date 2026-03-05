@@ -238,6 +238,7 @@
                     panel.style.height = PANEL_VH + 'vh';
                     panel.style.overflowY = 'hidden';
                     computeOffsets();
+                    console.log('panelPx:', window.innerHeight * 88 / 100, 'midExpose:', window.innerHeight * 40 / 100, 'avh:', alwaysVisibleHeight());
                     console.log(snapOffsets)
                     updateCollapsible();
                     applySnap(1, false);
