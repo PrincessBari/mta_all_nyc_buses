@@ -209,7 +209,7 @@
         snapOffsets[2] = 0;
         snapOffsets[1] = panelPx - midExpose;
         snapOffsets[0] = panelPx - avh + 40;
-        if (snapOffsets[0] < snapOffsets[1]) snapOffsets[0] = snapOffsets[1];
+        // if (snapOffsets[0] < snapOffsets[1]) snapOffsets[0] = snapOffsets[1];
     }
 
     function updateCollapsible() {
@@ -275,7 +275,6 @@
         if (!isMobile()) return;
         e.stopPropagation();
         computeOffsets();
-        console.log('snapOffsets:', snapOffsets, 'avh:', alwaysVisibleHeight(), 'panelPx:', window.innerHeight * PANEL_VH / 100);
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         startY = clientY; startOffset = snapOffsets[snapIndex]; liveOffset = startOffset;
         lastY = clientY; lastT = Date.now(); velocity = 0; dragging = false;
