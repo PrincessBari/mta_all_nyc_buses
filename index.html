@@ -275,6 +275,7 @@
         if (!isMobile()) return;
         e.stopPropagation();
         computeOffsets();
+        console.log('snapOffsets:', snapOffsets, 'avh:', alwaysVisibleHeight(), 'panelPx:', window.innerHeight * PANEL_VH / 100);
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         startY = clientY; startOffset = snapOffsets[snapIndex]; liveOffset = startOffset;
         lastY = clientY; lastT = Date.now(); velocity = 0; dragging = false;
