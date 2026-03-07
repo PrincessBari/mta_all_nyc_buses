@@ -11,16 +11,17 @@ The frontend is a single HTML file hosted on GitHub Pages. Every 45 seconds, the
 fetches the latest data from the MTA Bus Time API and returns it to the map. Bus markers are color-coded by borough and update in place
 without clearing the map, so buses appear to move smoothly over time.
 
-Route naming: Considerable time was spent reverse engineering the MTA Bus Time API's route naming convention. The API returns a PublishedLineName
+Route naming:
+Considerable time was spent reverse engineering the MTA Bus Time API's route naming convention. The API returns a PublishedLineName
 field that is sometimes a string and sometimes a list, requiring normalization before parsing. NYC bus routes follow a prefix-based system encoding
 both borough and service type — M for Manhattan, B for Brooklyn, Q for Queens, BX for the Bronx, and S for Staten Island. Express routes get their
 own category with prefixes like BXM, QM, BM, SIM, and X.
 
-Route shapes: GTFS (General Transit Feed Specification) data was downloaded from the MTA, which includes a shapes.txt file for each borough and a
-separate one for express buses. These coordinate sequences were converted to GeoJSON format and hosted on GitHub as a source layer in Mapbox, allowing
-route paths to be drawn instantly when a user interacts with a bus or selects a route from the dropdown.
+Route shapes:
+GTFS (General Transit Feed Specification) data was downloaded from the MTA across six folders — one per borough plus a separate one for express buses. Each folder contains a shapes.txt file with ordered latitude/longitude coordinate sequences defining the physical path of every route, and a trips.txt file that maps each shape_id to a route_id. The convert_gtfs.py script chains these two files together, normalizes route IDs for consistency across data sources (stripping agency prefixes, fixing casing, removing leading zeros, and standardizing SBS suffixes), and combines all directional shapes per route into MultiLineString GeoJSON hosted on GitHub, allowing route paths to be drawn instantly when a user interacts with a bus or selects a route from the dropdown.
 
-Bus stops: Stop location data was extracted from the MTA's GTFS stops.txt and stop_times.txt files across all six borough folders and converted to GeoJSON. 
+Bus stops:
+Stop location data was extracted from the MTA's GTFS stops.txt and stop_times.txt files across all six borough folders and converted to GeoJSON. 
 Each stop is linked to its route by chaining stop_times.txt (which maps trip IDs to stop IDs) with trips.txt (which maps trip IDs to route IDs). When a user 
 hovers a bus or selects a route, the stop circles appear along the route path alongside the route line.
 
